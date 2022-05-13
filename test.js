@@ -584,6 +584,7 @@ function randomRotateObject(){
 
 var intarvalID = null;
 function loop(){
+	
 	player.ray.moveto(0, 0, 1);
 	player.right.moveto(1, 0, 0);
 	player.pos.moveto(0, 0, -10);
