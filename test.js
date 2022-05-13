@@ -561,7 +561,7 @@ document.addEventListener('keydown', function(e){
 });
 
 function randomRotateObject(){
-	/*let dx = Math.random() * 0.05;
+	let dx = Math.random() * 0.05;
 	let dy = Math.random() * 0.05;
 	let dz = Math.random() * 0.05;
 
@@ -574,7 +574,7 @@ function randomRotateObject(){
 	for(tri of b.tris){
 		tri.update();
 	}
-	//}*/
+	//}
 
 	const start = performance.now();
 	draw();
