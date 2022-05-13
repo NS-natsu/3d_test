@@ -445,7 +445,7 @@ function draw(){
 	ctx.putImageData(imageData, 0, 0);
 }
 
-document.addEventListener('keydown', function(e){
+function keyEvent(e){
 	let top = crossproduct(player.right, player.ray);
 	switch(e.key){
 		case 'w':
@@ -558,7 +558,9 @@ document.addEventListener('keydown', function(e){
 		default: break;
 	}
 	draw();
-});
+}
+
+document.addEventListener('keydown', function(e){keyEvent(e);});
 
 function randomRotateObject(){
 	let dx = Math.random() * 0.05;
