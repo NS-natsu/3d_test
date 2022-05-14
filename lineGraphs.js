@@ -31,8 +31,8 @@ const LineGraph = {
 	draw : function(){
 		const max = (this.max - this.min) < 50 ? this.min + 50 : this.max;
 		const labels = new Array();
-		for(let i = 0; i < this.dataSize; i++){
-			labels.push(i + 1);
+		for(let i = 1; i <= this.dataSize; i++){
+			labels.push("" + i);
 		}
 		var myLineChart = new Chart(this.ctx, {
 			type : 'line',
@@ -41,7 +41,7 @@ const LineGraph = {
 				datasets : [
 					{
 						label : '実行速度',
-						data : this.list,
+						data : this.list.slice(),
 						borderColor : "rgba(255, 0, 0, 1)",
 						backgroundColor : "rgba(0, 0, 0, 0)"
 					}
