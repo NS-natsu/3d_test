@@ -49,20 +49,20 @@ class vectors{
 class Polygon{
 	constructor(type, surface, side, p0, p1, p2, col){
 		this.type = type;
-		//if(type != 'triangle' && type != 'Rect' && type != 'field'){
+		if(type != 'triangle' && type != 'Rect' && type != 'field'){
 			this. type = 'tri';
-		//}
+		}
 
 		this.surface = surface;
 		
-		//if(surface != 'normal' && surface != 'mirror' && surface != 0){
+		if(surface != 'normal' && surface != 'mirror' && surface != 0){
 			this.surface = 'normal';
-		//}
+		}
 
 		this.maskSide = side;
-		//if(this.maskSide != 'one' && this.maskSide != 'both'){
+		if(this.maskSide != 'one' && this.maskSide != 'both'){
 			this.maskSide = 'one'
-		//}
+		}
 
 		this.p = [p0, p1, p2];
 
@@ -342,31 +342,6 @@ function getRandomInt(min, max){
 	return Math.floor(Math.random() * (max - min)) + min;
 }
 
-function initCanvas(){
-	ctx.clearRect(0, 0, can_w, can_h);
-
-	ctx.strokeStyle = 'black';
-	ctx.fillRect(0, 0, can_w, can_h);
-
-
-	player = new Player(
-		new vector3(0, 0, -10),
-		new vector3(0, 0, 1),
-		new vector3(1, 0, 0)
-	);
-
-	initObject(0, 0, 0);
-
-	initObject(-4, 0, 0);
-
-	/*initObject(-8, 0, 0);
-
-	initObject(0, 0, 4);
-
-	initObject(0, 0, 8);*/
-
-}
-
 let player;
 class Player{
 	constructor(pos, ray, right){
@@ -384,16 +359,22 @@ let img_w;
 function viewPoint(x, y, data){
 	const base = (y * img_w + x) * 4;
 
-	/*pixels[base + 0] = (poly.tri.col >>> 16) & 0xff;
-	pixels[base + 1] = (poly.tri.col >>> 8) & 0xff;
-	pixels[base + 2] = poly.tri.col & 0xff;
-	pixels[base + 3] = (poly.tri.col >>> 24) & 0xff;
+	if(data.poly.type === 'field'){
+		let colSlct = (Math.floor(data.dst_l1) + Math.floor(data.dst_l2));
+		data.poly.col = ((colSlct & 1) === 1) ? 0xffffffff : 0xff222222;
+	}
+
+	/*
+	pixels[base + 0] = (data.poly.col >>> 16) & 0xff;
+	pixels[base + 1] = (data.poly.col >>> 8) & 0xff;
+	pixels[base + 2] = data.poly.col & 0xff;
+	pixels[base + 3] = (data.poly.col >>> 24) & 0xff;
 	return;*/
 
 	//光源からの方向
 	const light = new vector3(3, 10, -5);
 	const ambient = 20;
-	let diffuse;
+	let diffuse = 0;
 	let normal = data.poly.normal.clone().unitization();
 
 	let point = new vector3(
@@ -402,11 +383,14 @@ function viewPoint(x, y, data){
 		data.pos.z - light.z
 	);
 
+	const pointSize = point.getSize();
 	point.unitization();
+	let isForward = searchforward(light, point, pointSize, data.poly);
+	if(isForward === false){
+		diffuse = innerproduct(point, normal) * (100 - ambient);
+		if(diffuse < 0) diffuse = 0;
+	}
 
-	diffuse = innerproduct(point, normal) * (100 - ambient);
-
-	if(diffuse < 0) diffuse = 0;
 
 	//鏡面光 とりあえず視線が完全に反射すると仮定して反射したベクトルが光源に向かうかを調べる
 	let ray = new vector3(
@@ -423,7 +407,8 @@ function viewPoint(x, y, data){
 
 	ray.unitization();
 
-	let specular = -innerproduct(ray, point);
+	let specular = 0;
+	if(isForward === false) specular = -innerproduct(ray, point);
 
 	pixels[base + 0] = (data.poly.col >>> 16) & 0xff;
 	pixels[base + 1] = (data.poly.col >>> 8) & 0xff;
@@ -445,6 +430,119 @@ function viewPoint(x, y, data){
 		
 		strong = pixels[base + 2] + 255 * specular * specular;
 		pixels[base + 2] = (255 < strong) ? 255 : strong;
+	}
+}
+
+function searchforward(origin, ray, dist, expect){
+	let d = new vector3(0, 0, 0);
+	for(const b of block){
+		for(const polyNum of b.polys){
+			const poly = Polygons.polys[polyNum];
+			if(expect === poly) continue;
+			const det = innerproduct(poly.normal, ray);
+
+			if(det === 0){
+				continue;
+			}
+
+			d.moveto(
+				origin.x - Coords.x[b.offset] - Coords.x[poly.p[0]],
+				origin.y - Coords.y[b.offset] - Coords.y[poly.p[0]],
+				origin.z - Coords.z[b.offset] - Coords.z[poly.p[0]]
+			);
+
+			const args = -innerproduct(poly.normal, d);
+
+			const t = args / det;
+			if(dist <= t) continue;
+
+			const u = -detMat(d, poly.line2, ray) / det;
+			if(u < 0 || 1 < u) continue;
+			const v = -detMat(poly.line1, d, ray) / det;
+			if(v < 0 || 1 < u + v) continue;
+			return true;
+		}
+	}
+	return false;
+}
+
+function rayTracing_field(imagebuff){
+	const pX = player.pos.x;
+	const pY = player.pos.y;
+	const pZ = player.pos.z;
+
+	const pRay = player.ray;
+	const pRight = player.right;
+	const top = crossproduct(pRight, pRay).unitization();
+
+	const fields = new Array();
+
+	let d = new vector3(0, 0, 0);
+	let ray = new vector3(0, 0, 0);
+
+	for(const b of block){
+		for(const polyNum of b.polys){
+			const poly = Polygons.polys[polyNum];
+			if(poly.type != 'field') continue;
+			d.moveto(
+				pX - Coords.x[b.offset] - Coords.x[poly.p[0]],
+				pY - Coords.y[b.offset] - Coords.y[poly.p[0]],
+				pZ - Coords.z[b.offset] - Coords.z[poly.p[0]]
+			);
+			fields.push({poly : poly,
+							l1 : crossproduct(d, poly.line2),
+							l2 : crossproduct(poly.line1, d)});
+		}
+	}
+	for(let i = 0; i < can_h; i++){
+		const tanH = Math.tan(FOV_H / 2 - i * FOV_H / (can_h - 1));
+		for(let j = 0; j < can_w; j++){
+			const pos = i * can_w + j;
+			const tanW = Math.tan(FOV_W / 2 - j * FOV_W / (can_w - 1));
+			ray.moveto(
+				pRay.x - pRight.x * tanW + top.x * tanH,
+				pRay.y - pRight.y * tanW + top.y * tanH,
+				pRay.z - pRight.z * tanW + top.z * tanH
+			).unitization();
+
+			for(const field of fields){
+				const det = -innerproduct(field.poly.normal, ray);
+				if(det === 0){
+					continue;
+				}
+
+				if(field.poly.maskSide != 'both' && det < 0){
+					continue;
+				}
+				const args = innerproduct(field.poly.normal, d);
+
+				const t = args / det;
+				if(t <= 0) continue;
+				if(imagebuff[pos] === undefined){
+					imagebuff[pos] = {
+						dist: t,
+						dst_l1: -innerproduct(field.l1, ray) / det,
+						dst_l2: -innerproduct(field.l2, ray) / det,
+						pos: new vector3(
+							pX + t * ray.x,
+							pY + t * ray.y,
+							pZ + t * ray.z
+						),
+						poly: field.poly
+					}
+				} else if(t <= imagebuff[pos].dist){
+					imagebuff[pos].dst_l1 = -innerproduct(field.l1, ray) / det;
+					imagebuff[pos].dst_l2 = -innerproduct(field.l2, ray) / det;
+					imagebuff[pos].dist = t;
+					imagebuff[pos].poly = field.poly;
+					imagebuff[pos].pos.moveto(
+						pX + t * ray.x,
+						pY + t * ray.y,
+						pZ + t * ray.z
+					);
+				}
+			}
+		}
 	}
 }
 
@@ -480,6 +578,7 @@ function draw(){
 	for(const b of block){
 		for(const polyNum of b.polys){
 			const poly = Polygons.polys[polyNum];
+			if(poly.type === 'field') continue;
 			d.moveto(
 				pX - Coords.x[b.offset] - Coords.x[poly.p[0]],
 				pY - Coords.y[b.offset] - Coords.y[poly.p[0]],
@@ -490,7 +589,12 @@ function draw(){
 			//	poly.line2.x, poly.line2.y, poly.line2.z,
 			//	d.x, d.y, d.z) <= 0){
 			const args = -innerproduct(d, poly.normal);
-			if(args <= 0){
+
+			if(args === 0){
+				continue;
+			}
+
+			if(poly.maskSide != 'both' && args < 0){
 				continue;
 			}
 
@@ -565,10 +669,14 @@ function draw(){
 		}
 	}
 
+	rayTracing_field(imageDataBuff);
+
 	for(let y = 0; y < can_h; y++){
 		for(let x = 0; x < can_w; x++){
 			let datum =  imageDataBuff[y * can_w + x];
-			if(datum === undefined) continue;
+			if(datum === undefined) {
+				continue;
+			}
 			viewPoint(x, y, datum);
 		}
 	}
@@ -669,7 +777,7 @@ function randomRotateObject(){
 	let dz = Math.random() * 0.05;
 
 	//for(b of block){
-	let b = block[0];
+	let b = block[1];
 	b.rotateX(-0.03);
 	b.rotateY(-0.02);
 	//}
@@ -714,7 +822,7 @@ function stop(){
 initCanvas();
 draw();
 
-//loop();
+loop();
 
 function testExtendY(d){
 	let b = block[0];
@@ -728,7 +836,59 @@ function testExtendY(d){
 	draw();
 }
 
+
+
+function initCanvas(){
+	ctx.clearRect(0, 0, can_w, can_h);
+
+	ctx.strokeStyle = 'black';
+	ctx.fillRect(0, 0, can_w, can_h);
+
+
+	player = new Player(
+		new vector3(0, 0, -10),
+		new vector3(0, 0, 1),
+		new vector3(1, 0, 0)
+	);
+
+	initObject();
+
+	/*initObject(-8, 0, 0);
+
+	initObject(0, 0, 4);
+
+	initObject(0, 0, 8);*/
+
+}
+
 function initObject(x, y, z){
+	const _block = new blocks();
+
+	_block.set(0, -3, 0);
+
+	const pnt1 = Coords.addVector( 0, 0, 0);
+	const pnt2 = Coords.addVector( 0, 0, 1);
+	const pnt3 = Coords.addVector( 1, 0, 0);
+
+	const poly1 = Polygons.addPolygon(new Polygon('field', 'normal', 'both', pnt1, pnt2, pnt3, 0xffffffff));
+
+	_block.addCoord(pnt1)
+			.addCoord(pnt2)
+			.addCoord(pnt3)
+			.addPoly(poly1);
+
+	block.push(_block);
+
+
+	createCubeObject(0, 0, 0);
+	createCubeObject(-4, 0, 0);
+
+	/*createCubeObject(-8, 0, 0);
+	createCubeObject(0, 0, 4);
+	createCubeObject(0, 0, 8);*/
+}
+
+function createCubeObject(x, y, z){
 	const _block = new blocks();
 
 	_block.set(x, y, z);
