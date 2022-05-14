@@ -7,20 +7,107 @@ const can_h = can.height;// = 480;
 const FOV_W = 1.4;
 const FOV_H = 0.8;
 
-/*class vectors{
+class vectors{
 	constructor(){
-		this.x = new TypedArray.Float64Array();
-		this.y = new TypedArray.Float64Array();
-		this.z = new TypedArray.Float64Array();
+		this.x = new Float64Array();
+		this.y = new Float64Array();
+		this.z = new Float64Array();
 	}
 	addVector(x, y, z){
-		this.x.push(x);
-		this.y.push(y);
-		this.z.push(z);
+		const len = this.x.length;
+		let tmp = new Float64Array(len + 1);
+		tmp.set(this.x, 0);
+		tmp[len] = x;
+		this.x = tmp;
+
+		tmp = new Float64Array(len + 1);
+		tmp.set(this.y, 0);
+		tmp[len] = y;
+		this.y = tmp;
+
+		tmp = new Float64Array(len + 1);
+		tmp.set(this.z, 0);
+		tmp[len] = z;
+		this.z = tmp;
+
+		return len;
+	}
+
+	getCoords(n){
+		return {
+			x : this.x[n],
+			y : this.y[n],
+			z : this.z[n]
+		};
+	}
+
+	getVector(n){
+		return new vector3(this.x[n], this.y[n], this.z[n]);
 	}
 }
 
-const Coords = new vectors();*/
+class Polygon{
+	constructor(type, surface, side, p0, p1, p2, col){
+		this.type = type;
+		//if(type != 'triangle' && type != 'Rect' && type != 'field'){
+			this. type = 'tri';
+		//}
+
+		this.surface = surface;
+		
+		//if(surface != 'normal' && surface != 'mirror' && surface != 0){
+			this.surface = 'normal';
+		//}
+
+		this.maskSide = side;
+		//if(this.maskSide != 'one' && this.maskSide != 'both'){
+			this.maskSide = 'one'
+		//}
+
+		this.p = [p0, p1, p2];
+
+		this.col = col;
+
+		this.line1 = vector3.subVector(Coords.getVector(p1), Coords.getCoords(p0));
+		this.line2 = vector3.subVector(Coords.getVector(p2), Coords.getCoords(p0));
+
+		this.normal = crossproduct(this.line1, this.line2);
+	}
+
+	update(){
+		this.line1 = vector3.subVector(Coords.getVector(this.p[1]), Coords.getCoords(this.p[0]));
+		this.line2 = vector3.subVector(Coords.getVector(this.p[2]), Coords.getCoords(this.p[0]));
+
+		this.normal = crossproduct(this.line1, this.line2);
+	}
+
+	getline(a, b){
+		let line = new vector3(
+			this.p[b].x - this.p[a].x,
+			this.p[b].y - this.p[a].y,
+			this.p[b].z - this.p[a].z
+		);
+		return line;
+	}
+
+	static templateTri(p0, p1, p2, col){
+		return new Polygon('tri', 'normal', 'one', p0, p1, p2, col);
+	}
+}
+
+const Coords = new vectors();
+const Polygons = {
+	polys : new Array(),
+
+	addPolygon : function(poly){
+		this.polys.push(poly);
+		return this.polys.length - 1;
+	},
+
+	update : function(p){
+		this.polys[p].update();
+	}
+}
 
 class vector2 {
 	constructor(x, y){ 
@@ -137,57 +224,81 @@ class vector3 {
 	}
 }
 
-class triangle {
-	constructor(p0, p1, p2, col){
-		this.p = [p0, p1, p2];
-		this.col = col;
-		this.line1 = vector3.subVector(p1, p0);
-		this.line2 = vector3.subVector(p2, p0);
-	}
-
-	update(){
-		this.line1 = vector3.subVector(this.p[1], this.p[0]);
-		this.line2 = vector3.subVector(this.p[2], this.p[0]);
-	}
-
-	getline(a, b){
-		let line = new vector3(
-			this.p[b].x - this.p[a].x,
-			this.p[b].y - this.p[a].y,
-			this.p[b].z - this.p[a].z
-		);
-		return line;
-	}
-}
-
 class blocks {
 	constructor(){
-		this.offset = new vector3(0, 0, 0);
-		this.points = new Array();
-		this.tris = new Array();
+		this.offset = Coords.addVector(0, 0, 0);
+		this.coords = new Array();
+		this.polys = new Array();
 	}
 	move(x, y, z){
-		this.offset.x += x;
-		this.offset.y += y;
-		this.offset.z += z;
+		Coords.x[this.offset] += x;
+		Coords.y[this.offset] += y;
+		Coords.z[this.offset] += z;
 	}
 	set(x, y, z){
-		this.offset.x = x;
-		this.offset.y = y;
-		this.offset.z = z;
+		Coords.x[this.offset] = x;
+		Coords.y[this.offset] = y;
+		Coords.z[this.offset] = z;
 	}
-	addPoint(vec){
-		this.points.push(vec);
+	addCoord(coord){
+		this.coords.push(coord);
+		return this;
 	}
-	addTriangle(p1, p2, p3, col){
-		let tri = new triangle(
-			this.points[p1],
-			this.points[p2],
-			this.points[p3],
-			col
-		);
+	addPoly(poly){
+		this.polys.push(poly);
+		return this;
+	}
 
-		this.tris.push(tri);
+	rotateX(theta){
+		const vec = new vector3(0, 0, 0);
+		for(const c of this.coords){
+			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.rotateX(theta);
+			Coords.x[c] = vec.x;
+			Coords.y[c] = vec.y;
+			Coords.z[c] = vec.z;
+		}
+		for(const poly of this.polys){
+			Polygons.update(poly);
+		}
+	}
+	rotateY(theta){
+		const vec = new vector3(0, 0, 0);
+		for(const c of this.coords){
+			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.rotateY(theta);
+			Coords.x[c] = vec.x;
+			Coords.y[c] = vec.y;
+			Coords.z[c] = vec.z;
+		}
+		for(const poly of this.polys){
+			Polygons.update(poly);
+		}
+	}
+	rotateZ(theta){
+		const vec = new vector3(0, 0, 0);
+		for(const c of this.coords){
+			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.rotateZ(theta);
+			Coords.x[c] = vec.x;
+			Coords.y[c] = vec.y;
+			Coords.z[c] = vec.z;
+		}
+		for(const poly of this.polys){
+			Polygons.update(poly);		}
+	}
+	rotateVec(n, theta){
+		const vec = new vector3(0, 0, 0);
+		for(const c of this.coords){
+			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.rotateX(n, theta);
+			Coords.x[c] = vec.x;
+			Coords.y[c] = vec.y;
+			Coords.z[c] = vec.z;
+		}
+		for(const poly of this.polys){
+			Polygons.update(poly);
+		}
 	}
 }
 
@@ -270,7 +381,7 @@ let block = new Array();
 let pixels;
 let img_w;
 
-function viewPoint(x, y, poly){
+function viewPoint(x, y, data){
 	const base = (y * img_w + x) * 4;
 
 	/*pixels[base + 0] = (poly.tri.col >>> 16) & 0xff;
@@ -283,12 +394,12 @@ function viewPoint(x, y, poly){
 	const light = new vector3(3, 10, -5);
 	const ambient = 20;
 	let diffuse;
-	let normal = crossproduct(poly.tri.getline(0, 1), poly.tri.getline(0, 2)).unitization();
+	let normal = data.poly.normal.clone().unitization();
 
 	let point = new vector3(
-		poly.pos.x - light.x,
-		poly.pos.y - light.y,
-		poly.pos.z - light.z
+		data.pos.x - light.x,
+		data.pos.y - light.y,
+		data.pos.z - light.z
 	);
 
 	point.unitization();
@@ -299,9 +410,9 @@ function viewPoint(x, y, poly){
 
 	//鏡面光 とりあえず視線が完全に反射すると仮定して反射したベクトルが光源に向かうかを調べる
 	let ray = new vector3(
-		poly.pos.x - player.pos.x,
-		poly.pos.y - player.pos.y,
-		poly.pos.z - player.pos.z
+		data.pos.x - player.pos.x,
+		data.pos.y - player.pos.y,
+		data.pos.z - player.pos.z
 	);
 
 	let n = innerproduct(normal, ray) * 2;
@@ -314,10 +425,10 @@ function viewPoint(x, y, poly){
 
 	let specular = -innerproduct(ray, point);
 
-	pixels[base + 0] = (poly.tri.col >>> 16) & 0xff;
-	pixels[base + 1] = (poly.tri.col >>> 8) & 0xff;
-	pixels[base + 2] = poly.tri.col & 0xff;
-	pixels[base + 3] = (poly.tri.col >>> 24) & 0xff;
+	pixels[base + 0] = (data.poly.col >>> 16) & 0xff;
+	pixels[base + 1] = (data.poly.col >>> 8) & 0xff;
+	pixels[base + 2] = data.poly.col & 0xff;
+	pixels[base + 3] = (data.poly.col >>> 24) & 0xff;
 
 	pixels[base + 0] *= (ambient + diffuse) / 100;
 	pixels[base + 1] *= (ambient + diffuse) / 100;
@@ -366,17 +477,20 @@ function draw(){
 	const correctW = can_w / FOV_W;
 	const correctH = can_h / FOV_H;
 
-	for(b of block){
-		for(tri of b.tris){
+	for(const b of block){
+		for(const polyNum of b.polys){
+			const poly = Polygons.polys[polyNum];
 			d.moveto(
-				pX - b.offset.x - tri.p[0].x,
-				pY - b.offset.y - tri.p[0].y,
-				pZ - b.offset.z - tri.p[0].z
+				pX - Coords.x[b.offset] - Coords.x[poly.p[0]],
+				pY - Coords.y[b.offset] - Coords.y[poly.p[0]],
+				pZ - Coords.z[b.offset] - Coords.z[poly.p[0]]
 			);
 
-			if(detMat_fast(tri.line1.x , tri.line1.y, tri.line1.z,
-				tri.line2.x, tri.line2.y, tri.line2.z,
-				d.x, d.y, d.z) <= 0){
+			//if(detMat_fast(poly.line1.x , poly.line1.y, poly.line1.z,
+			//	poly.line2.x, poly.line2.y, poly.line2.z,
+			//	d.x, d.y, d.z) <= 0){
+			const args = -innerproduct(d, poly.normal);
+			if(args <= 0){
 				continue;
 			}
 
@@ -390,13 +504,13 @@ function draw(){
 						dst_l1: _u,
 						dst_l2: _v,
 						pos: null,
-						tri: null
+						poly: null
 					};
 
 					ray.moveto(
-						b.offset.x + tri.p[0].x + _u * tri.line1.x + _v * tri.line2.x - pX,
-						b.offset.y + tri.p[0].y + _u * tri.line1.y + _v * tri.line2.y - pY,
-						b.offset.z + tri.p[0].z + _u * tri.line1.z + _v * tri.line2.z - pZ
+						Coords.x[b.offset] + Coords.x[poly.p[0]] + _u * poly.line1.x + _v * poly.line2.x - pX,
+						Coords.y[b.offset] + Coords.y[poly.p[0]] + _u * poly.line1.y + _v * poly.line2.y - pY,
+						Coords.z[b.offset] + Coords.z[poly.p[0]] + _u * poly.line1.z + _v * poly.line2.z - pZ
 					).unitization();
 
 					const correction = innerproduct(ray, pRay);
@@ -408,15 +522,17 @@ function draw(){
 					const argW = innerproduct(ray, pRight) / correction;
 					if(((argW < 0) ? -argW : argW) > argRayW) continue;
 
-					const det = detMat_fast(tri.line1.x , tri.line1.y, tri.line1.z,
+					/*const det = detMat_fast(tri.line1.x , tri.line1.y, tri.line1.z,
 									tri.line2.x, tri.line2.y, tri.line2.z,
-									-ray.x, -ray.y, -ray.z);
+									-ray.x, -ray.y, -ray.z);*/
+					const det = innerproduct(ray, poly.normal);
 
-					const t = detMat_fast(
+					/*const t = detMat_fast(
 								tri.line1.x , tri.line1.y, tri.line1.z,
 								tri.line2.x, tri.line2.y, tri.line2.z,
-								d.x, d.y, d.z) / det;
+								d.x, d.y, d.z) / det;*/
 
+					const t = args / det;
 					if(t <= 0) continue;
 
 					const diffW = (Math.atan(argW) + (FOV_W / 2)) * correctW + 0.5;
@@ -425,7 +541,7 @@ function draw(){
 					const pnt = (diffH >> 0) * can_w + (diffW >> 0); // num | 0 == floor(num)
 					if(imageDataBuff[pnt] === undefined || t <= imageDataBuff[pnt].dist){
 						intersects.dist = t;
-						intersects.tri = tri;
+						intersects.poly = poly;
 						intersects.pos = new vector3(
 							pX + t * ray.x,
 							pY + t * ray.y,
@@ -512,62 +628,32 @@ function keyEvent(e){
 
 		case 'i':
 			for(b of block){
-				for(point of b.points){
-					point.rotateX(0.1);
-				}
-				for(tri of b.tris){
-					tri.update();
-				}
+				b.rotateX(0.1);
 			}
 			break;
 		case 'k':
 			for(b of block){
-				for(point of b.points){
-					point.rotateX(-0.1);
-				}
-				for(tri of b.tris){
-					tri.update();
-				}
+				b.rotateX(-0.1);
 			}
 			break;
 		case 'u':
 			for(b of block){
-				for(point of b.points){
-					point.rotateZ(0.1);
-				}
-				for(tri of b.tris){
-					tri.update();
-				}
+				b.rotateZ(0.1);
 			}
 			break;
 		case 'o':
 			for(b of block){
-				for(point of b.points){
-					point.rotateZ(-0.1);
-				}
-				for(tri of b.tris){
-					tri.update();
-				}
+				b.rotateZ(-0.1);
 			}
 			break;
 		case 'j':
 			for(b of block){
-				for(point of b.points){
-					point.rotateY(0.1);
-				}
-				for(tri of b.tris){
-					tri.update();
-				}
+				b.rotateY(0.1);
 			}
 			break;
 		case 'l':
 			for(b of block){
-				for(point of b.points){
-					point.rotateY(-0.1);
-				}
-				for(tri of b.tris){
-					tri.update();
-				}
+				b.rotateY(-0.1);
 			}
 			break;
 		default: break;
@@ -584,13 +670,8 @@ function randomRotateObject(){
 
 	//for(b of block){
 	let b = block[0];
-	for(point of b.points){
-		point.rotateX(-0.03);
-		point.rotateY(-0.02);
-	}
-	for(tri of b.tris){
-		tri.update();
-	}
+	b.rotateX(-0.03);
+	b.rotateY(-0.02);
 	//}
 
 	const start = performance.now();
@@ -633,7 +714,7 @@ function stop(){
 initCanvas();
 draw();
 
-loop();
+//loop();
 
 function testExtendY(d){
 	let b = block[0];
@@ -648,30 +729,53 @@ function testExtendY(d){
 }
 
 function initObject(x, y, z){
-	let _block = new blocks();
+	const _block = new blocks();
+
 	_block.set(x, y, z);
 
-	_block.addPoint(new vector3(-1, -1, -1));
-	_block.addPoint(new vector3( 1, -1, -1));
-	_block.addPoint(new vector3( 1,  1, -1));
-	_block.addPoint(new vector3(-1,  1, -1));
-	_block.addPoint(new vector3(-1, -1,  1));
-	_block.addPoint(new vector3( 1, -1,  1));
-	_block.addPoint(new vector3( 1,  1,  1));
-	_block.addPoint(new vector3(-1,  1,  1));
+	const pnt1 = Coords.addVector(-1, -1, -1);
+	const pnt2 = Coords.addVector( 1, -1, -1);
+	const pnt3 = Coords.addVector( 1,  1, -1);
+	const pnt4 = Coords.addVector(-1,  1, -1);
+	const pnt5 = Coords.addVector(-1, -1,  1);
+	const pnt6 = Coords.addVector( 1, -1,  1);
+	const pnt7 = Coords.addVector( 1,  1,  1);
+	const pnt8 = Coords.addVector(-1,  1,  1);
 
-	_block.addTriangle(0, 3, 2, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(0, 2, 1, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(3, 7, 6, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(3, 6, 2, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(1, 2, 6, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(1, 6, 5, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(4, 0, 1, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(4, 1, 5, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(4, 7, 3, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(4, 3, 0, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(5, 6, 7, getRandomInt(0xff505050, 0xffffffff));
-	_block.addTriangle(5, 7, 4, getRandomInt(0xff505050, 0xffffffff));
+	_block.addCoord(pnt1)
+			.addCoord(pnt2)
+			.addCoord(pnt3)
+			.addCoord(pnt4)
+			.addCoord(pnt5)
+			.addCoord(pnt6)
+			.addCoord(pnt7)
+			.addCoord(pnt8);
+
+	const poly1 = Polygons.addPolygon(Polygon.templateTri(pnt1, pnt4, pnt3, getRandomInt(0xff505050, 0xffffffff)));
+	const poly2 = Polygons.addPolygon(Polygon.templateTri(pnt1, pnt3, pnt2, getRandomInt(0xff505050, 0xffffffff)));
+	const poly3 = Polygons.addPolygon(Polygon.templateTri(pnt4, pnt8, pnt7, getRandomInt(0xff505050, 0xffffffff)));
+	const poly4 = Polygons.addPolygon(Polygon.templateTri(pnt4, pnt7, pnt3, getRandomInt(0xff505050, 0xffffffff)));
+	const poly5 = Polygons.addPolygon(Polygon.templateTri(pnt2, pnt3, pnt7, getRandomInt(0xff505050, 0xffffffff)));
+	const poly6 = Polygons.addPolygon(Polygon.templateTri(pnt2, pnt7, pnt6, getRandomInt(0xff505050, 0xffffffff)));
+	const poly7 = Polygons.addPolygon(Polygon.templateTri(pnt5, pnt1, pnt2, getRandomInt(0xff505050, 0xffffffff)));
+	const poly8 = Polygons.addPolygon(Polygon.templateTri(pnt5, pnt2, pnt6, getRandomInt(0xff505050, 0xffffffff)));
+	const poly9 = Polygons.addPolygon(Polygon.templateTri(pnt5, pnt8, pnt4, getRandomInt(0xff505050, 0xffffffff)));
+	const poly10 = Polygons.addPolygon(Polygon.templateTri(pnt5, pnt4, pnt1, getRandomInt(0xff505050, 0xffffffff)));
+	const poly11 = Polygons.addPolygon(Polygon.templateTri(pnt6, pnt7, pnt8, getRandomInt(0xff505050, 0xffffffff)));
+	const poly12 = Polygons.addPolygon(Polygon.templateTri(pnt6, pnt8, pnt5, getRandomInt(0xff505050, 0xffffffff)));
+
+	_block.addPoly(poly1)
+			.addPoly(poly2)
+			.addPoly(poly3)
+			.addPoly(poly4)
+			.addPoly(poly5)
+			.addPoly(poly6)
+			.addPoly(poly7)
+			.addPoly(poly8)
+			.addPoly(poly9)
+			.addPoly(poly10)
+			.addPoly(poly11)
+			.addPoly(poly12);
 
 	block.push(_block);
 }
