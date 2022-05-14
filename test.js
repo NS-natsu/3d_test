@@ -7,6 +7,21 @@ const can_h = can.height;// = 480;
 const FOV_W = 1.4;
 const FOV_H = 0.8;
 
+/*class vectors{
+	constructor(){
+		this.x = new TypedArray.Float64Array();
+		this.y = new TypedArray.Float64Array();
+		this.z = new TypedArray.Float64Array();
+	}
+	addVector(x, y, z){
+		this.x.push(x);
+		this.y.push(y);
+		this.z.push(z);
+	}
+}
+
+const Coords = new vectors();*/
+
 class vector2 {
 	constructor(x, y){ 
 		this.x = x;
@@ -581,7 +596,10 @@ function randomRotateObject(){
 	const start = performance.now();
 	draw();
 	const end = performance.now();
-	console.log(end - start);
+
+	LineGraph.addData(end - start);
+	LineGraph.draw();
+
 }
 
 var intarvalID = null;
