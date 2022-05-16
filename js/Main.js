@@ -37,48 +37,63 @@ function getRandomInt(min, max){
 }
 
 function keyEvent(e){
+	let ray = camera.getRay();
+	let top = camera.getTop();
+	let right = camera.getRight();
 	switch(e.key){
 		case 'w':
-			camera.pos.x += 0.5 * camera.ray.x;
-			camera.pos.y += 0.5 * camera.ray.y;
-			camera.pos.z += 0.5 * camera.ray.z;
+			camera.move(
+				0.5 * ray.x,
+				0.5 * ray.y,
+				0.5 * ray.z
+			);
 			break;
 		case 's':
-			camera.pos.x -= 0.5 * camera.ray.x;
-			camera.pos.y -= 0.5 * camera.ray.y;
-			camera.pos.z -= 0.5 * camera.ray.z;
+			camera.move(
+				-0.5 * ray.x,
+				-0.5 * ray.y,
+				-0.5 * ray.z
+			);
 			break;
 		case 'd':
-			camera.pos.x += 0.5 * camera.right.x;
-			camera.pos.y += 0.5 * camera.right.y;
-			camera.pos.z += 0.5 * camera.right.z;
+			camera.move(
+				0.5 * right.x,
+				0.5 * right.y,
+				0.5 * right.z
+			);
 			break;
 		case 'a':
-			camera.pos.x -= 0.5 * camera.right.x;
-			camera.pos.y -= 0.5 * camera.right.y;
-			camera.pos.z -= 0.5 * camera.right.z;
+			camera.move(
+				-0.5 * right.x,
+				-0.5 * right.y,
+				-0.5 * right.z
+			);
 			break;
 		case 'q':
-			camera.pos.x += 0.5 * camera.top.x;
-			camera.pos.y += 0.5 * camera.top.y;
-			camera.pos.z += 0.5 * camera.top.z;
+			camera.move(
+				0.5 * top.x,
+				0.5 * top.y,
+				0.5 * top.z
+			);
 			break;
 		case 'e':
-			camera.pos.x -= 0.5 * camera.top.x;
-			camera.pos.y -= 0.5 * camera.top.y;
-			camera.pos.z -= 0.5 * camera.top.z;
+			camera.move(
+				-0.5 * top.x,
+				-0.5 * top.y,
+				-0.5 * top.z
+			);
 			break;
 		case 'r':
-			camera.rotateVec(camera.right, -0.1);
+			camera.rotateRight(-0.1);
 			break;
 		case 'f':
-			camera.rotateVec(camera.right, 0.1);
+			camera.rotateRight(0.1);
 			break;
 		case 'c':
-			camera.rotateVec(camera.top, 0.1);
+			camera.rotateTop(0.1);
 			break;
 		case 'z':
-			camera.rotateVec(camera.top, -0.1);
+			camera.rotateTop(-0.1);
 			break;
 
 		case 'i':
@@ -122,9 +137,9 @@ function randomRotateObject(){
 	let dz = Math.random() * 0.05;
 
 	//for(b of block){
-	let b = block[1];
-	b.rotateX(-0.03);
-	b.rotateY(-0.02);
+	//let b = block[1];
+	//b.rotateX(-0.03);
+	//b.rotateY(-0.02);
 	//}
 
 	const start = performance.now();
@@ -136,8 +151,8 @@ function randomRotateObject(){
 }
 
 function loop(){
-	camera.set(0, 0, -10);
-	let top = camera.getTop();
+	camera.set(0, 3, -10);
+/*	let top = camera.getTop();
 	let right = camera.getRight();
 	camera.move(
 		3 * top.x + 3 * right.x,
@@ -146,7 +161,7 @@ function loop(){
 	);
 
 	camera.rotateTop(-0.2);
-	camera.rotateRight(0.3);
+	camera.rotateRight(0.3);*/
 
 	if(intarvalID != null) stop();
 	intarvalID = setInterval(randomRotateObject, 16);
@@ -235,7 +250,7 @@ function initObject(){
 
 
 	createCubeObject(0, 0, 0);
-	createCubeObject(-4, 0, 0);
+	//createCubeObject(-4, 0, 0);
 
 	/*createCubeObject(-8, 0, 0);
 	createCubeObject(0, 0, 4);
@@ -243,11 +258,7 @@ function initObject(){
 }
 
 function initAll(){
-	camera = new Camera(
-		new vector3(0, 0, -10),
-		new vector3(0, 0, 1),
-		new vector3(1, 0, 0)
-	);
+	camera = new Camera(45, can_w / can_h, 1, Infinity);
 
 	initCanvas();
 	initObject();

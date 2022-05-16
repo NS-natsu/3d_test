@@ -481,8 +481,8 @@ class Camera {
 	getCoord(type){
 		return {
 			x: this.#p[type*3 + 0],
-			x: this.#p[type*3 + 1],
-			x: this.#p[type*3 + 2]
+			y: this.#p[type*3 + 1],
+			z: this.#p[type*3 + 2]
 		}
 	}
 	getPos(){
@@ -501,8 +501,8 @@ class Camera {
 	getScreen(n){
 		return {
 			x: this.#screen[n*3 + 0],
-			x: this.#screen[n*3 + 1],
-			x: this.#screen[n*3 + 2]
+			y: this.#screen[n*3 + 1],
+			z: this.#screen[n*3 + 2]
 		}
 	}
 

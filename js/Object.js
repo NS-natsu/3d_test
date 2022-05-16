@@ -168,8 +168,10 @@ class Camera{
 		}
 
 		//this.#p = new Int32Array(4 * 3); // pos, ray, right, top : x, y, z
-		this.#p = new Int32Array([0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0]);
-		this.#screen = new Int32Array(3 * 3); //leftTop, rightTop, leftUnder : x, y, z
+		this.#p = new Float32Array([0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0]);
+		this.#screen = new Float32Array(3*3); //leftTop, rightTop, leftUnder : x, y, z
+
+		this.updateScreen();
 
 		/*this.rayDefault = {
 			x: 0,
@@ -190,30 +192,35 @@ class Camera{
 	}
 
 	updateScreen(){
-		const rad = 2 * Math.PI * (deg / 2) / 360;
+		let rad = 2 * Math.PI * (this.#deg / 2) / 360;
+		let rTan = Math.tan(rad);
+
 		const top = {
-			x: this.#p[0] + this.#p[3] * Math.tan(rad),
-			y: this.#p[1] + this.#p[4] * Math.tan(rad),
-			z: this.#p[2] + this.#p[5] * Math.tan(rad)
+			x: (this.#p[3] + this.#p[9] * rTan),
+			y: (this.#p[4] + this.#p[10] * rTan),
+			z: (this.#p[5] + this.#p[11] * rTan)
 		};
 
-		const under = {
-			x: this.#p[0] - this.#p[3] * Math.tan(rad),
-			y: this.#p[1] - this.#p[4] * Math.tan(rad),
-			z: this.#p[2] - this.#p[5] * Math.tan(rad)
+		const bottom = {
+			x: (this.#p[3] - this.#p[9] * rTan),
+			y: (this.#p[4] - this.#p[10] * rTan),
+			z: (this.#p[5] - this.#p[11] * rTan)
 		};
 
-		this.#screen[0] = top.x - this.#p[6] * Math.tan(rad * aspect);
-		this.#screen[1] = top.y - this.#p[7] * Math.tan(rad * aspect);
-		this.#screen[2] = top.z - this.#p[8] * Math.tan(rad * aspect);
+		rad *= this.#aspect;
+		rTan = Math.tan(rad);
 
-		this.#screen[3] = top.x - this.#p[6] * Math.tan(rad * aspect);
-		this.#screen[4] = top.y - this.#p[7] * Math.tan(rad * aspect);
-		this.#screen[5] = top.z - this.#p[8] * Math.tan(rad * aspect);
+		this.#screen[0] = this.#p[0] + this.#near * (top.x - this.#p[6] * rTan);
+		this.#screen[1] = this.#p[1] + this.#near * (top.y - this.#p[7] * rTan);
+		this.#screen[2] = this.#p[2] + this.#near * (top.z - this.#p[8] * rTan);
 
-		this.#screen[6] = top.x + this.#p[6] * Math.tan(rad * aspect);
-		this.#screen[7] = top.y + this.#p[7] * Math.tan(rad * aspect);
-		this.#screen[8] = top.z + this.#p[8] * Math.tan(rad * aspect);
+		this.#screen[3] = this.#p[0] + this.#near * (top.x + this.#p[6] * rTan);
+		this.#screen[4] = this.#p[1] + this.#near * (top.y + this.#p[7] * rTan);
+		this.#screen[5] = this.#p[2] + this.#near * (top.z + this.#p[8] * rTan);
+
+		this.#screen[6] = this.#p[0] + this.#near * (bottom.x - this.#p[6] * rTan);
+		this.#screen[7] = this.#p[1] + this.#near * (bottom.y - this.#p[7] * rTan);
+		this.#screen[8] = this.#p[2] + this.#near * (bottom.z - this.#p[8] * rTan);
 	}
 
 	getMaxDist(){
@@ -248,48 +255,89 @@ class Camera{
 		this.#p[0*3 + 0] = x;
 		this.#p[0*3 + 1] = y;
 		this.#p[0*3 + 2] = z;
+		this.updateScreen();
 	}
 	move(x, y, z){
 		this.#p[0*3 + 0] += x;
 		this.#p[0*3 + 1] += y;
 		this.#p[0*3 + 2] += z;
+		for(let i = 2; 0 <= i; i--){
+			this.#screen[(i << 1) + i + 0] += x;
+			this.#screen[(i << 1) + i + 1] += y;
+			this.#screen[(i << 1) + i + 2] += z;
+		}
 	}
 
-	getVec(type){
+	getCoord(type){
 		return {
 			x: this.#p[type*3 + 0],
-			x: this.#p[type*3 + 1],
-			x: this.#p[type*3 + 2]
+			y: this.#p[type*3 + 1],
+			z: this.#p[type*3 + 2]
 		}
 	}
 	getPos(){
-		return this.getVec(0);
+		return this.getCoord(0);
 	}
 	getRay(){
-		return this.getVec(1);
+		return this.getCoord(1);
 	}
 	getRight(){
-		return this.getVec(2);
+		return this.getCoord(2);
 	}
 	getTop(){
-		return this.getVec(3);
+		return this.getCoord(3);
 	}
 
 	getScreen(n){
 		return {
 			x: this.#screen[n*3 + 0],
-			x: this.#screen[n*3 + 1],
-			x: this.#screen[n*3 + 2]
+			y: this.#screen[n*3 + 1],
+			z: this.#screen[n*3 + 2]
 		}
 	}
 
 	rotateRay(theta){
-
+		const ray = new vector3(this.#p[3], this.#p[4], this.#p[5]);
+		const right = new vector3(this.#p[6], this.#p[7], this.#p[8]);
+		const top = new vector3(this.#p[9], this.#p[10], this.#p[11]);
+		top.rotateVec(ray, theta).unitization();
+		right.rotateVec(ray, theta).unitization();
+		this.#p[6] = right.x;
+		this.#p[7] = right.y;
+		this.#p[8] = right.z;
+		this.#p[9] = top.x;
+		this.#p[10] = top.y;
+		this.#p[11] = top.z;
+		this.updateScreen();
 	}
+
 	rotateTop(theta){
-
+		const ray = new vector3(this.#p[3], this.#p[4], this.#p[5]);
+		const right = new vector3(this.#p[6], this.#p[7], this.#p[8]);
+		const top = new vector3(this.#p[9], this.#p[10], this.#p[11]);
+		ray.rotateVec(top, theta).unitization();
+		right.rotateVec(top, theta).unitization();
+		this.#p[3] = ray.x;
+		this.#p[4] = ray.y;
+		this.#p[5] = ray.z;
+		this.#p[6] = right.x;
+		this.#p[7] = right.y;
+		this.#p[8] = right.z;
+		this.updateScreen();
 	}
-	rotateRight(theta){
 
+	rotateRight(theta){
+		const ray = new vector3(this.#p[3], this.#p[4], this.#p[5]);
+		const right = new vector3(this.#p[6], this.#p[7], this.#p[8]);
+		const top = new vector3(this.#p[9], this.#p[10], this.#p[11]);
+		top.rotateVec(right, theta).unitization();
+		ray.rotateVec(right, theta).unitization();
+		this.#p[3] = ray.x;
+		this.#p[4] = ray.y;
+		this.#p[5] = ray.z;
+		this.#p[9] = top.x;
+		this.#p[10] = top.y;
+		this.#p[11] = top.z;
+		this.updateScreen();
 	}
 }

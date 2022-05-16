@@ -1,4 +1,7 @@
+let pixels;
+
 function setDrawData(data){
+	const pPos = camera.getPos();
 	const light = new vector3(3, 10, -5);
 	const ambient = 20;
 
@@ -37,9 +40,9 @@ function setDrawData(data){
 		let normal = datum.poly.normal.clone().unitization();
 
 		ray.moveto(
-			datum.pos.x - camera.pos.x,
-			datum.pos.y - camera.pos.y,
-			datum.pos.z - camera.pos.z
+			datum.pos.x - pPos.x,
+			datum.pos.y - pPos.y,
+			datum.pos.z - pPos.z
 		);
 
 		point.moveto(
@@ -145,6 +148,11 @@ function draw(){
 	}
 	rays_casting(imageDataBuff, fields);
 
+	/*rayTracing_field(imageDataBuff);*/
+
+	setDrawData(imageDataBuff);
+
+	ctx.putImageData(imageData, 0, 0);
 	return;
 	for(const b of block){
 		for(const polyNum of b.polys){
@@ -247,7 +255,4 @@ function draw(){
 
 	rayTracing_field(imageDataBuff);
 
-	setDrawData(imageDataBuff);
-
-	ctx.putImageData(imageData, 0, 0);
 }
