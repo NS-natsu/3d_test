@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop</title>
+    <style>
+    	* { padding: 0; margin: 0; }
+    	canvas {display: block; margin: 0; }
+		div#objectOperate {
+			position: absolute;
+			left: 128px;
+			margin: 10px 20px;
+			width: 96px;
+			height: 60px;
+		}
+		div#objectOperate > button {
+			position: absolute;
+			width: 32px;
+			height: 20px;
+		}
+		div#objectOperate > button#rotZR {
+			left: 66%;
+			top: 0%;
+		}
+		div#objectOperate > button#rotZL {
+			left: 0%;
+			top: 0%;
+		}
+		div#objectOperate > button#rotR {
+			left: 66%;
+			top: 33%;
+		}
+		div#objectOperate > button#rotL {
+			left: 0%;
+			top: 33%;
+		}
+		div#objectOperate > button#rotU {
+			left: 33%;
+			top: 0%;
+		}
+		div#objectOperate > button#rotD {
+			left: 33%;
+			top: 66%;
+		}
+		div#playerOperate {
+			position: absolute;
+			margin: 10px 0;
+			width: 128px;
+			height: 60px;
+		}
+		div#playerOperate > button {
+			position: absolute;
+			width: 32px;
+			height: 20px;
+		}
+		div#playerOperate > button#forward {
+			left: 25%;
+			top: 0%;
+		}
+		div#playerOperate > button#backward {
+			left: 25%;
+			top: 33%;
+		}
+		div#playerOperate > button#right {
+			left: 50%;
+			top: 33%;
+		}
+		div#playerOperate > button#left {
+			left: 0%;
+			top: 33%;
+		}
+		div#playerOperate > button#up {
+			left: 0%;
+			top: 0%;
+		}
+		div#playerOperate > button#down {
+			left: 50%;
+			top: 0%;
+		}
+		div#playerOperate > button#rotR {
+			left: 50%;
+			top: 66%;
+		}
+		div#playerOperate > button#rotL {
+			left: 0%;
+			top: 66%;
+		}
+		div#playerOperate > button#rotU {
+			left: 75%;
+			top: 0%;
+		}
+		div#playerOperate > button#rotD {
+			left: 75%;
+			top: 66%;
+		}
+    </style>
+</head>
+<body>
+	<canvas id="can" width="480" height="360"></canvas>
+	<div>	
+		<div id="playerOperate">
+			<button type="button" id="forward" onclick='keyEvent({key:"w"});'>前進</button>
+			<button type="button" id="backward" onclick='keyEvent({key:"s"});'>後退</button>
+			<button type="button" id="right" onclick='keyEvent({key:"d"});'>右移</button>
+			<button type="button" id="left" onclick='keyEvent({key:"a"});'>左移</button>
+			<button type="button" id="up" onclick='keyEvent({key:"q"});'>上昇</button>
+			<button type="button" id="down" onclick='keyEvent({key:"e"});'>降下</button>
+			<button type="button" id="rotR" onclick='keyEvent({key:"c"});'>右向</button>
+			<button type="button" id="rotL" onclick='keyEvent({key:"z"});'>左向</button>
+			<button type="button" id="rotU" onclick='keyEvent({key:"r"});'>上向</button>
+			<button type="button" id="rotD" onclick='keyEvent({key:"f"});'>下向</button>
+		</div>
+		<div id="objectOperate">
+			<button type="button" id="rotZR" onclick='keyEvent({key:"o"});'>右横</button>
+			<button type="button" id="rotZL" onclick='keyEvent({key:"u"});'>左横</button>
+			<button type="button" id="rotR" onclick='keyEvent({key:"l"});'>右向</button>
+			<button type="button" id="rotL" onclick='keyEvent({key:"j"});'>左向</button>
+			<button type="button" id="rotU" onclick='keyEvent({key:"i"});'>上向</button>
+			<button type="button" id="rotD" onclick='keyEvent({key:"k"});'>下向</button>
+		</div>
+	</div>
+	<div>
+		<canvas id="myLineChart"></canvas>
+	</div>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
+	<script src="lineGraphs.js"></script>
+	<script src="Coords.js"></script>
+	<script src="Object.js"></script>
+	<script src="RayTrace.js"></script>
+	<script src="Draw.js"></script>
+	<script src="Main.js"></script>
+	<!--
+	<script src="test.js"></script>
+-->
+</body>
+</html>

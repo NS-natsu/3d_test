@@ -136,19 +136,17 @@ function randomRotateObject(){
 }
 
 function loop(){
-	camera.ray.moveto(0, 0, 1);
-	camera.right.moveto(1, 0, 0);
-	camera.pos.moveto(0, 0, -10);
-	let top = camera.top;
-	camera.pos.x += 3 * top.x + 3 * camera.right.x;
-	camera.pos.y += 3 * top.y + 3 * camera.right.y;
-	camera.pos.z += 3 * top.z + 3 * camera.right.z;
+	camera.set(0, 0, -10);
+	let top = camera.getTop();
+	let right = camera.getRight();
+	camera.move(
+		3 * top.x + 3 * right.x,
+		3 * top.y + 3 * right.y,
+		3 * top.z + 3 * right.z
+	);
 
-	camera.ray.rotateVec(top, -0.2);
-	camera.right.rotateVec(top, -0.2);
-
-	camera.ray.rotateVec(camera.right, 0.3);
-	top.rotateVec(camera.right, 0.3);
+	camera.rotateTop(-0.2);
+	camera.rotateRight(0.3);
 
 	if(intarvalID != null) stop();
 	intarvalID = setInterval(randomRotateObject, 16);
@@ -253,9 +251,6 @@ function initAll(){
 
 	initCanvas();
 	initObject();
-	/*initObject(-8, 0, 0);
-	initObject(0, 0, 4);
-	initObject(0, 0, 8);*/
 
 	draw(can_w, can_h);
 

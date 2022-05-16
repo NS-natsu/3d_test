@@ -7,7 +7,7 @@ function searchforward(origin, ray, dist, expectPoly){
 		for(const polyNum of b.polys){
 			const poly = Polygons.polys[polyNum];
 			if(expectPoly === poly) continue;
-			const det = -vector3.innerproduct(poly.normal, ray);
+			const det = -innerproduct(poly.normal, ray);
 
 			if(det === 0){
 				continue;
@@ -20,12 +20,11 @@ function searchforward(origin, ray, dist, expectPoly){
 				origin.z - Coords.z[b.offset] - base.z
 			);
 
-			const t = vector3.innerproduct(poly.normal, d) / det;
+			const t = innerproduct(poly.normal, d) / det;
 			if(dist <= t) continue;
 
 			const u = -detMat(d, poly.line2, ray) / det;
 			if(u < 0 || 1 < u) continue;
-
 			const v = -detMat(poly.line1, d, ray) / det;
 			if(v < 0 || 1 < u + v) continue;
 			return true;
@@ -35,13 +34,13 @@ function searchforward(origin, ray, dist, expectPoly){
 }
 
 function rayTracing_field(imagebuff){
-	const pX = player.pos.x;
-	const pY = player.pos.y;
-	const pZ = player.pos.z;
+	const pX = camera.pos.x;
+	const pY = camera.pos.y;
+	const pZ = camera.pos.z;
 
-	const pRay = player.ray;
-	const pRight = player.right;
-	const top = player.top;
+	const pRay = camera.ray;
+	const pRight = camera.right;
+	const top = camera.top;
 
 	const fields = new Array();
 
@@ -59,6 +58,7 @@ function rayTracing_field(imagebuff){
 				pZ - Coords.z[b.offset] - base.z
 			);
 			fields.push({poly : poly,
+							dist : innerproduct(poly.normal, d),
 							l1 : crossproduct(d, poly.line2),
 							l2 : crossproduct(poly.line1, d)});
 		}
@@ -83,9 +83,8 @@ function rayTracing_field(imagebuff){
 				if(field.poly.maskSide != 'both' && det < 0){
 					continue;
 				}
-				const args = innerproduct(field.poly.normal, d);
 
-				const t = args / det;
+				const t = field.dist / det;
 				if(t <= 0) continue;
 				if(imagebuff[pos] === undefined){
 					imagebuff[pos] = {
@@ -116,39 +115,47 @@ function rayTracing_field(imagebuff){
 }
 
 function rays_casting(buffer, objs, width, height){
-	const pX = camera.pos.x;
-	const pY = camera.pos.y;
-	const pZ = camera.pos.z;
-	const pRay = camera.ray;
-	const pRight = camera.right;
+	const pPos = camera.getPos();
 
-	const top = camera.top;
-	const ray = new vector3(0, 0, 0);
+	const SCRLT = camera.getScreen(0);
+	const SCRRT = camera.getScreen(1);
+	const SCRLU = camera.getScreen(2);
+
+	SCRRT.x /= 480;
+	SCRRT.y /= 480;
+	SCRRT.z /= 480;
+
+	const ray = {
+		x: 0,
+		y: 0,
+		z: 0
+	};
 
 	let pos = -1;
-	for(let y = 0; y < height; y++){
-		const tanH = Math.tan(FOV_H / 2 - y * FOV_H / (height - 1));
-		for(let x = 0; x < width; x++){
+	for(let y = 0; y < 480; y++){
+		ray.x = SCRLT.x + (y / 480) * SCRLU.x - pPos.x;
+		ray.y = SCRLT.y + (y / 480) * SCRLU.y - pPos.y;
+		ray.z = SCRLT.z + (y / 480) * SCRLU.z - pPos.z;
+		for(let x = 0; x < 480; x++){
 			pos += 1;
-			const tanW = Math.tan(FOV_W / 2 - x * FOV_W / (width - 1));
+			ray.x += SCRRT.x;
+			ray.y += SCRRT.y;
+			ray.z += SCRRT.z;
 
-			ray.moveto(
-				pRay.x - pRight.x * tanW + top.x * tanH,
-				pRay.y - pRight.y * tanW + top.y * tanH,
-				pRay.z - pRight.z * tanW + top.z * tanH
-			).unitization();
-
-			for(const obj of objs){
-				const det = -vector3.innerproduct(obj.poly.normal, ray);
+			for(let i = objs.length - 1; 0 <= i; i--){
+				const obj = objs[i];
+				const poly = obj.poly;
+				const det = -innerproduct(poly.normal, ray);
 				if(det === 0){
 					continue;
 				}
-				if(obj.poly.maskSide != 'both' && det < 0){
+				if(poly.maskSide != 'both' && det < 0){
 					continue;
 				}
 
 				const t = obj.dist / det;
 				if(t <= 0) continue;
+			continue;
 
 				const u = -vector3.innerproduct(obj.l1, ray) / det;
 				if(obj.poly.type != 'field'){
