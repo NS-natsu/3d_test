@@ -131,13 +131,13 @@ function rays_casting(buffer, objs, width, height){
 
 	const w = 480, h = 360;
 
-	SCRRT.x /= can_w;
-	SCRRT.y /= can_w;
-	SCRRT.z /= can_w;
+	SCRRT.x /= can_w-1;
+	SCRRT.y /= can_w-1;
+	SCRRT.z /= can_w-1;
 
-	SCRLB.x /= can_h;
-	SCRLB.y /= can_h;
-	SCRLB.z /= can_h;
+	SCRLB.x /= can_h-1;
+	SCRLB.y /= can_h-1;
+	SCRLB.z /= can_h-1;
 
 	const ray = new vector3(0, 0, 0);/*{
 		x: 0,
@@ -146,11 +146,11 @@ function rays_casting(buffer, objs, width, height){
 	};*/
 
 	let pos = -1;
-	for(let y = 0; y <= can_h; y++){
+	for(let y = 0; y < can_h; y++){
 		ray.x = SCRLT.x + (y * SCRLB.x) - pPos.x;
 		ray.y = SCRLT.y + (y * SCRLB.y) - pPos.y;
 		ray.z = SCRLT.z + (y * SCRLB.z) - pPos.z;
-		for(let x = 0; x <= can_w; x++){
+		for(let x = 0; x < can_w; x++){
 			pos += 1;
 			ray.x += SCRRT.x;
 			ray.y += SCRRT.y;
