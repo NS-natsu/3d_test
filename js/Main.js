@@ -152,7 +152,7 @@ function randomRotateObject(){
 
 function loop(){
 	camera.set(0, 3, -10);
-/*	let top = camera.getTop();
+	let top = camera.getTop();
 	let right = camera.getRight();
 	camera.move(
 		3 * top.x + 3 * right.x,
@@ -161,7 +161,7 @@ function loop(){
 	);
 
 	camera.rotateTop(-0.2);
-	camera.rotateRight(0.3);*/
+	camera.rotateRight(0.3);
 
 	if(intarvalID != null) stop();
 	intarvalID = setInterval(randomRotateObject, 16);
@@ -250,7 +250,7 @@ function initObject(){
 
 
 	createCubeObject(0, 0, 0);
-	//createCubeObject(-4, 0, 0);
+	createCubeObject(-4, 0, 0);
 
 	/*createCubeObject(-8, 0, 0);
 	createCubeObject(0, 0, 4);
