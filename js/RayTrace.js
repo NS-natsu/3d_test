@@ -2,31 +2,35 @@ const FOV_W = 1.4;
 const FOV_H = 0.8;
 
 function searchforward(origin, ray, dist, expectPoly){
-	let d = new vector3(0, 0, 0);
+	const d = {x: 0, y: 0, z: 0};
 	for(const b of block){
 		for(const polyNum of b.polys){
 			const poly = Polygons.polys[polyNum];
 			if(expectPoly === poly) continue;
-			const det = -innerproduct(poly.normal, ray);
 
+			const det = -innerproduct(poly.normal, ray);
 			if(det === 0){
 				continue;
 			}
 
 			const base = poly.getBase();
-			d.moveto(
-				origin.x - Coords.x[b.offset] - base.x,
-				origin.y - Coords.y[b.offset] - base.y,
-				origin.z - Coords.z[b.offset] - base.z
-			);
+			d.x = origin.x - Coords.x[b.offset] - base.x;
+			d.y = origin.y - Coords.y[b.offset] - base.y;
+			d.z = origin.z - Coords.z[b.offset] - base.z;
 
 			const t = innerproduct(poly.normal, d) / det;
 			if(dist <= t) continue;
 
 			const u = -detMat(d, poly.line2, ray) / det;
-			if(u < 0 || 1 < u) continue;
+			if(poly.type !== 'field'){
+				if(u < 0 || 1 < u) continue;
+			}
+
 			const v = -detMat(poly.line1, d, ray) / det;
-			if(v < 0 || 1 < u + v) continue;
+			if(poly.type !== 'field'){
+				if(v < 0 || 1 < v) continue;
+				if(poly.type === 'tri' && 1 < (u + v)) continue;
+			}
 			return true;
 		}
 	}
@@ -117,53 +121,64 @@ function rayTracing_field(imagebuff){
 function rays_casting(buffer, objs, width, height){
 	const pPos = camera.getPos();
 
-	const SCRLT = camera.getScreen(0);
-	const SCRRT = camera.getScreen(1);
-	const SCRLB = camera.getScreen(2);
+	let tmp = camera.getScreen(0);
+	let startX = tmp.x;
+	let startY = tmp.y;
+	let startZ = tmp.z;
 
-	SCRRT.x -= SCRLT.x;
-	SCRRT.y -= SCRLT.y;
-	SCRRT.z -= SCRLT.z;
+	tmp = camera.getScreen(1);
+	let stepW_X = (tmp.x - startX) / (can_w-1);
+	let stepW_Y = (tmp.y - startY) / (can_w-1);
+	let stepW_Z = (tmp.z - startZ) / (can_w-1);
 
-	SCRLB.x -= SCRLT.x;
-	SCRLB.y -= SCRLT.y;
-	SCRLB.z -= SCRLT.z;
+	tmp = camera.getScreen(2);
+	let stepH_X = (tmp.x - startX) / (can_h-1);
+	let stepH_Y = (tmp.y - startY) / (can_h-1);
+	let stepH_Z = (tmp.z - startZ) / (can_h-1);
 
-	const w = 480, h = 360;
+	startX += (can_w-1) * stepW_X - pPos.x;
+	startY += (can_w-1) * stepW_Y - pPos.y;
+	startZ += (can_w-1) * stepW_Z - pPos.z;
 
-	SCRRT.x /= can_w-1;
-	SCRRT.y /= can_w-1;
-	SCRRT.z /= can_w-1;
+	stepH_X -= can_w * stepW_X;
+	stepH_Y -= can_w * stepW_Y;
+	stepH_Z -= can_w * stepW_Z;
 
-	SCRLB.x /= can_h-1;
-	SCRLB.y /= can_h-1;
-	SCRLB.z /= can_h-1;
+	for(let i = objs.length - 1; 0 <= i; i--){
+		const obj = objs[i];
+		const poly = Polygons.polys[obj.polyNum];
 
-	const ray = new vector3(0, 0, 0);/*{
-		x: 0,
-		y: 0,
-		z: 0
-	};*/
+		const normal = poly.normal;
 
-	let pos = -1;
-	for(let y = 0; y < can_h; y++){
-		ray.x = SCRLT.x + (y * SCRLB.x) - pPos.x;
-		ray.y = SCRLT.y + (y * SCRLB.y) - pPos.y;
-		ray.z = SCRLT.z + (y * SCRLB.z) - pPos.z;
-		for(let x = 0; x < can_w; x++){
-			pos += 1;
-			ray.x += SCRRT.x;
-			ray.y += SCRRT.y;
-			ray.z += SCRRT.z;
+		const isBoth = (poly.maskSide === 'both');
+		const isField = (poly.type === 'field');
+		const isTri = (poly.type === 'tri')
 
-			for(let i = objs.length - 1; 0 <= i; i--){
-				const obj = objs[i];
-				const poly = obj.poly;
-				const det = -innerproduct(poly.normal, ray);
+		const ray = /*new vector3(startX, startY, startZ);*/{
+			x: startX,
+			y: startY,
+			z: startZ
+		};
+
+		let pos = -1;
+		buffer.LookAt(buffer.size() - 1);
+		for(let y = can_h; 0 < y; y--){
+			ray.x += stepH_X;
+			ray.y += stepH_Y;
+			ray.z += stepH_Z;
+			for(let x = can_w; 0 < x; x--){
+				pos++;
+				ray.x += stepW_X;
+				ray.y += stepW_Y;
+				ray.z += stepW_Z;
+
+				buffer.next();
+
+				const det = -innerproduct(normal, ray);
 				if(det === 0){
 					continue;
 				}
-				if(poly.maskSide != 'both' && det < 0){
+				if(!isBoth && det < 0){
 					continue;
 				}
 
@@ -171,38 +186,24 @@ function rays_casting(buffer, objs, width, height){
 				if(t <= 0) continue;
 
 				const u = -innerproduct(obj.l1, ray) / det;
-				if(obj.poly.type != 'field'){
+				if(!isField){
 					if(u < 0 || 1 < u) continue;
 				}
 
 				const v = -innerproduct(obj.l2, ray) / det;
-				if(obj.poly.type != 'field'){
+				if(!isField){
 					if(v < 0 || 1 < v) continue;
-					if(obj.poly.type == 'tri' && 1 < (u + v)) continue;
+					if(isTri && 1 < (u + v)) continue;
 				}
 
-				if(buffer[pos] === undefined){
-					buffer[pos] = {
-						dist: t,
-						dst_l1: u,
-						dst_l2: v,
-						pos: new vector3(
-							pPos.x + t * ray.x,
-							pPos.y + t * ray.y,
-							pPos.z + t * ray.z
-						),
-						poly: obj.poly
-					}
-				} else if(t <= buffer[pos].dist){
-					buffer[pos].dist = t;
-					buffer[pos].dst_l1 = u;
-					buffer[pos].dst_l2 = v;
-					buffer[pos].pos.moveto(
+				if(t <= buffer.getDist()){
+					buffer.setData(
+						t, u, v,
 						pPos.x + t * ray.x,
 						pPos.y + t * ray.y,
-						pPos.z + t * ray.z
+						pPos.z + t * ray.z,
+						Polygons.indexOf(poly)
 					);
-					buffer[pos].poly = obj.poly;
 				}
 			}
 		}

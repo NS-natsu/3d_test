@@ -27,6 +27,10 @@ const Polygons = {
 		for(const poly of this.polys){
 			poly.update();
 		}
+	},
+
+	indexOf : function(poly){
+		return this.polys.indexOf(poly);
 	}
 };
 
@@ -258,7 +262,7 @@ function initObject(){
 }
 
 function initAll(){
-	camera = new Camera(45, can_w / can_h, 1, Infinity);
+	camera = new Camera(45, can_w / can_h, 1, /*Infinity*/40);
 
 	initCanvas();
 	initObject();

@@ -12,54 +12,72 @@ function setDrawData(data){
 	const threshold = Math.cos((3 * 2 * Math.PI) / 360);
 
 	let base = -4;
-	for(const datum of data){
+	data.LookAt(data.size() - 1);
+	for(let i = data.size(); 0 < i; i--){
+		base += 4;
+		data.next();
+		const polyNum = data.getPolyNum();
+		if(polyNum === -1){
+			continue;
+		}
+		const poly = Polygons.polys[polyNum];
+		const dst_l1 = data.getDistL1();
+		const dst_l2 = data.getDistL2();
+		const pos = data.getPos();
 	/*for(let y = 0; y < can_h; y++){
 		for(let x = 0; x < can_w; x++){*/
 		//const datum =  data[y * can_w + x];
 		//const base = (y * img_w + x) * 4;
-		base += 4;
-		if(datum === undefined) {
-			continue;
-		}
 
-		if(datum.poly.type === 'field'){
-			let colSlct = (Math.floor(datum.dst_l1) + Math.floor(datum.dst_l2));
-			datum.poly.col = ((colSlct & 1) === 1) ? 0xffffffff : 0xff222222;
+		if(poly.type === 'field'){
+			let colSlct = (Math.floor(dst_l1) + Math.floor(dst_l2));
+			poly.col = ((colSlct & 1) === 1) ? 0xffffffff : 0xff222222;
 		}
 
 		
-		/*pixels[base + 0] = (datum.poly.col >>> 16) & 0xff;
-		pixels[base + 1] = (datum.poly.col >>> 8) & 0xff;
-		pixels[base + 2] = datum.poly.col & 0xff;
-		pixels[base + 3] = (datum.poly.col >>> 24) & 0xff;
+		/*pixels[base + 0] = (poly.col >>> 16) & 0xff;
+		pixels[base + 1] = (poly.col >>> 8) & 0xff;
+		pixels[base + 2] = poly.col & 0xff;
+		pixels[base + 3] = (poly.col >>> 24) & 0xff;
 		continue;*/
 
 		let diffuse = 0;
 
 		//光源からの方向
-		let normal = datum.poly.normal.clone().unitization();
+		let normal = poly.normal.clone().unitization();
 
 		ray.moveto(
-			datum.pos.x - pPos.x,
-			datum.pos.y - pPos.y,
-			datum.pos.z - pPos.z
+			pos.x - pPos.x,
+			pos.y - pPos.y,
+			pos.z - pPos.z
 		);
 
 		point.moveto(
-			datum.pos.x - light.x,
-			datum.pos.y - light.y,
-			datum.pos.z - light.z
+			pos.x - light.x,
+			pos.y - light.y,
+			pos.z - light.z
 		);
 
 		const pointSize = point.getSize();
 		point.unitization();
 
-		let isForward = searchforward(light, point, pointSize, datum.poly);
+		let isForward = searchforward(light, point, pointSize, poly);
 		if(isForward === false && 0 <= innerproduct(ray, normal) * innerproduct(point, normal)){
 			diffuse = -innerproduct(point, normal) * (100 - ambient);
-			if(datum.poly.maskSide === 'both') diffuse = Math.abs(diffuse);
+			if(poly.maskSide === 'both') diffuse = Math.abs(diffuse);
 			else if(diffuse < 0) diffuse = 0;
 		}
+
+		pixels[base + 0] = (poly.col >>> 16) & 0xff;
+		pixels[base + 1] = (poly.col >>> 8) & 0xff;
+		pixels[base + 2] = poly.col & 0xff;
+		pixels[base + 3] = (poly.col >>> 24) & 0xff;
+
+		pixels[base + 0] *= (ambient + diffuse) / 100;
+		pixels[base + 1] *= (ambient + diffuse) / 100;
+		pixels[base + 2] *= (ambient + diffuse) / 100;
+
+		//continue;
 
 		//鏡面光 とりあえず視線が完全に反射すると仮定して反射したベクトルが光源に向かうかを調べる
 		let n = innerproduct(normal, ray) * 2;
@@ -72,15 +90,6 @@ function setDrawData(data){
 
 		let specular = 0;
 		if(isForward === false) specular = -innerproduct(ray, point);
-
-		pixels[base + 0] = (datum.poly.col >>> 16) & 0xff;
-		pixels[base + 1] = (datum.poly.col >>> 8) & 0xff;
-		pixels[base + 2] = datum.poly.col & 0xff;
-		pixels[base + 3] = (datum.poly.col >>> 24) & 0xff;
-
-		pixels[base + 0] *= (ambient + diffuse) / 100;
-		pixels[base + 1] *= (ambient + diffuse) / 100;
-		pixels[base + 2] *= (ambient + diffuse) / 100;
 
 		if(threshold < specular) {
 			specular = (specular - threshold) / (1 - threshold);
@@ -98,17 +107,92 @@ function setDrawData(data){
 	}*/
 }
 
+class Buffer {
+	#data;
+	#itr;
+	#max;
+	constructor(size){
+		this.#max = size - 1;
+		this.#data = new Float32Array(size * 8);
+		this.#itr = 0;
+	}
+	LookAt(n){
+		if(n < 0 || this.#max < n){
+			return;
+		}
+
+		this.#itr = n;
+		return this;
+	}
+	next(){
+		if(this.#itr < this.#max){
+			this.#itr += 1;
+		} else {
+			this.#itr = 0;
+		}
+	}
+
+	setData(d, l1, l2, x, y, z, pnum){
+		const offset = this.#itr << 3;
+		this.#data[offset + 0] = d;
+		this.#data[offset + 1] = l1;
+		this.#data[offset + 2] = l2;
+		this.#data[offset + 3] = x;
+		this.#data[offset + 4] = y;
+		this.#data[offset + 5] = z;
+		this.#data[offset + 6] = pnum;
+	}
+
+	getDist(){
+		return this.#data[(this.#itr << 3) + 0];
+	}
+
+	getDistL1(){
+		return this.#data[(this.#itr << 3) + 1];
+	}
+
+	getDistL2(){
+		return this.#data[(this.#itr << 3) + 2];
+	}
+
+	getPosX(){
+		return this.#data[(this.#itr << 3) + 3];
+	}
+
+	getPosY(){
+		return this.#data[(this.#itr << 3) + 4];
+	}
+
+	getPosZ(){
+		return this.#data[(this.#itr << 3) + 5];
+	}
+
+	getPos(){
+		return {
+			x: this.getPosX(),
+			y: this.getPosY(),
+			z: this.getPosZ()
+		};
+	}
+
+	getPolyNum(){
+		return this.#data[(this.#itr << 3) + 6] | 0;
+	}
+
+	size() {
+		return this.#max + 1;
+	}
+}
+
 function draw(){
 	ctx.clearRect(0, 0, can_w, can_h);
 
 	ctx.strokeStyle = 'black';
 	ctx.fillRect(0, 0, can_w, can_h);
 	let imageData = ctx.getImageData(0, 0, can_w, can_h);
-	let imageDataBuff = new Array(can_w*can_h);
+	//let imageDataBuff = new Array(can_w*can_h);
 	img_w = imageData.width;
 	pixels = imageData.data;
-
-	const resolution = 200;
 
 	const pPos = camera.getPos();
 
@@ -127,7 +211,6 @@ function draw(){
 
 	const fields = new Array();
 
-
 	for(let i = block.length - 1; 0 <= i; i--){
 		const b = block[i];
 		const offset = b.offset;
@@ -140,12 +223,21 @@ function draw(){
 				pPos.y - Coords.y[offset] - base.y,
 				pPos.z - Coords.z[offset] - base.z
 			);
-			fields.push({poly : poly,
+			fields.push({polyNum : polyNum,
 							dist : innerproduct(poly.normal, d),
 							l1 : crossproduct(d, poly.line2),
 							l2 : crossproduct(poly.line1, d)});
 		}
 	}
+
+	const dist = camera.getMaxDist();
+	const imageDataBuff = new Buffer(can_w*can_h);
+	imageDataBuff.LookAt(0);
+	for(let i = imageDataBuff.size(); 0 < i; i--){
+		imageDataBuff.setData(dist, 0, 0, 0, 0, 0, -1);
+		imageDataBuff.next();
+	}
+
 	rays_casting(imageDataBuff, fields);
 
 	/*rayTracing_field(imageDataBuff);*/

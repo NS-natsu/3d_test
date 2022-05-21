@@ -224,7 +224,7 @@ class Camera{
 	}
 
 	getMaxDist(){
-		return this.#far / this.#near;
+		return (this.#far / this.#near);
 	}
 
 
