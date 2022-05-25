@@ -1,3 +1,4 @@
+let calc_Right = false;
 let pixels;
 
 function setDrawData(data){
@@ -35,11 +36,11 @@ function setDrawData(data){
 		}
 
 		
-		/*pixels[base + 0] = (poly.col >>> 16) & 0xff;
+		pixels[base + 0] = (poly.col >>> 16) & 0xff;
 		pixels[base + 1] = (poly.col >>> 8) & 0xff;
 		pixels[base + 2] = poly.col & 0xff;
 		pixels[base + 3] = (poly.col >>> 24) & 0xff;
-		continue;*/
+		if(!calc_Right) continue;/**/
 
 		let diffuse = 0;
 
@@ -143,6 +144,20 @@ class Buffer {
 		this.#data[offset + 6] = pnum;
 	}
 
+	formatData(d, l1, l2, x, y, z, pnum){
+		let offset = -8;
+		for(let cnt = this.#max; 0 <= cnt; cnt--){
+			offset += 8;
+			this.#data[offset + 0] = d;
+			this.#data[offset + 1] = l1;
+			this.#data[offset + 2] = l2;
+			this.#data[offset + 3] = x;
+			this.#data[offset + 4] = y;
+			this.#data[offset + 5] = z;
+			this.#data[offset + 6] = pnum;
+		}
+	}
+
 	getDist(){
 		return this.#data[(this.#itr << 3) + 0];
 	}
@@ -181,6 +196,71 @@ class Buffer {
 
 	size() {
 		return this.#max + 1;
+	}
+}
+
+class CollisionDetection {
+	#data;
+	#length;
+	constructor(objects, point){
+		const fields = new Array();
+		let d = new vector3(0, 0, 0);
+		for(let i = objects.length - 1; 0 <= i; i--){
+			const b = objects[i];
+			const offset = b.offset;
+			for(let j = b.polys.length - 1; 0 <= j; j--){
+				const polyNum = b.polys[j];
+				const poly = Polygons.polys[polyNum];
+				const base = poly.getBase();
+				d.moveto(
+					point.x - Coords.x[offset] - base.x,
+					point.y - Coords.y[offset] - base.y,
+					point.z - Coords.z[offset] - base.z
+				);
+				fields.push({polyNum : polyNum,
+								dist : innerproduct(poly.normal, d),
+								l1 : crossproduct(d, poly.line2),
+								l2 : crossproduct(poly.line1, d)});
+			}
+		}
+
+		this.#data = new Float32Array(fields.length*8);
+		for(let i = 0; i < fields.length; i++){
+			const offset = i << 3;
+			this.#data[offset + 0] = fields[i].polyNum;
+			this.#data[offset + 1] = fields[i].dist;
+			this.#data[offset + 2] = fields[i].l1.x;
+			this.#data[offset + 3] = fields[i].l1.y;
+			this.#data[offset + 4] = fields[i].l1.z;
+			this.#data[offset + 5] = fields[i].l2.x;
+			this.#data[offset + 6] = fields[i].l2.y;
+			this.#data[offset + 7] = fields[i].l2.z;
+		}
+
+		this.#length = fields.length;
+	}
+
+	getSize(){
+		return this.#length;
+	}
+
+	getData(n){
+		if(n < 0 || this.#length <= n){
+			n = 0;
+		}
+		n <<= 3;
+		return {
+				polyNum : this.#data[n + 0],
+				dist : this.#data[n + 1],
+				l1 : {	x:this.#data[n + 2],
+						y:this.#data[n + 3],
+						z:this.#data[n + 4]
+					},
+				l2 : {	x:this.#data[n + 5],
+						y:this.#data[n + 6],
+						z:this.#data[n + 7]
+					}
+			};
 	}
 }
 
@@ -228,15 +308,13 @@ function draw(){
 							l1 : crossproduct(d, poly.line2),
 							l2 : crossproduct(poly.line1, d)});
 		}
-	}
+	}/**/
+
+	//const fields = new CollisionDetection(block, pPos);
 
 	const dist = camera.getMaxDist();
 	const imageDataBuff = new Buffer(can_w*can_h);
-	imageDataBuff.LookAt(0);
-	for(let i = imageDataBuff.size(); 0 < i; i--){
-		imageDataBuff.setData(dist, 0, 0, 0, 0, 0, -1);
-		imageDataBuff.next();
-	}
+	imageDataBuff.formatData(dist, 0, 0, 0, 0, 0, -1);
 
 	rays_casting(imageDataBuff, fields);
 

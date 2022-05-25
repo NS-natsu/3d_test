@@ -7,7 +7,7 @@ const LineGraph = {
 	list : new Array(),
 
 	addData : function(data) {
-		this.list.push(data);
+		this.list.push(data);/*
 		if(this.list.length === 1){
 			this.max = this.min = this.list[0];
 		}
@@ -16,14 +16,22 @@ const LineGraph = {
 		}
 		if(this.min > this.list[this.list.length - 1]){
 			this.min = this.list[this.list.length - 1]
-		}
+		}*/
 		while(this.dataSize < this.list.length){
 			this.list.shift();
 		}
 
 		this.ave = 0;
+		this.max = this.min = this.list[0];
 		for(let i = 0; i < this.list.length; i++){
 			this.ave += this.list[i];
+			if(this.max < this.list[i]){
+				this.max = this.list[i];
+			}
+
+			if(this.min > this.list[i]){
+				this.min = this.list[i];
+			}
 		}
 		this.ave /= this.list.length;
 	},

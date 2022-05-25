@@ -2,7 +2,6 @@ const FOV_W = 1.4;
 const FOV_H = 0.8;
 
 function searchforward(origin, ray, dist, expectPoly){
-	const d = {x: 0, y: 0, z: 0};
 	for(const b of block){
 		for(const polyNum of b.polys){
 			const poly = Polygons.polys[polyNum];
@@ -14,9 +13,12 @@ function searchforward(origin, ray, dist, expectPoly){
 			}
 
 			const base = poly.getBase();
-			d.x = origin.x - Coords.x[b.offset] - base.x;
-			d.y = origin.y - Coords.y[b.offset] - base.y;
-			d.z = origin.z - Coords.z[b.offset] - base.z;
+
+			const d = {
+				x: origin.x - Coords.x[b.offset] - base.x,
+				y: origin.y - Coords.y[b.offset] - base.y,
+				z: origin.z - Coords.z[b.offset] - base.z
+			};
 
 			const t = innerproduct(poly.normal, d) / det;
 			if(dist <= t) continue;
@@ -143,18 +145,25 @@ function rays_casting(buffer, objs, width, height){
 	stepH_X -= can_w * stepW_X;
 	stepH_Y -= can_w * stepW_Y;
 	stepH_Z -= can_w * stepW_Z;
-
 	for(let i = objs.length - 1; 0 <= i; i--){
-		const obj = objs[i];
-		const poly = Polygons.polys[obj.polyNum];
+		//const obj = objs[i];
+		const dist = objs[i].dist;
+		const l1 = objs[i].l1;
+		const l2 = objs[i].l2;
+		const poly = Polygons.polys[objs[i].polyNum];
 
-		const normal = poly.normal;
+		//inverse
+		const normal = {
+			x: -poly.normal.x,
+			y: -poly.normal.y,
+			z: -poly.normal.z
+		};
 
 		const isBoth = (poly.maskSide === 'both');
 		const isField = (poly.type === 'field');
-		const isTri = (poly.type === 'tri')
+		const isTri = (poly.type === 'tri');
 
-		const ray = /*new vector3(startX, startY, startZ);*/{
+		const ray = {
 			x: startX,
 			y: startY,
 			z: startZ
@@ -174,7 +183,7 @@ function rays_casting(buffer, objs, width, height){
 
 				buffer.next();
 
-				const det = -innerproduct(normal, ray);
+				let det = innerproduct(normal, ray);
 				if(det === 0){
 					continue;
 				}
@@ -182,15 +191,15 @@ function rays_casting(buffer, objs, width, height){
 					continue;
 				}
 
-				const t = obj.dist / det;
+				const t = dist / det;
 				if(t <= 0) continue;
 
-				const u = -innerproduct(obj.l1, ray) / det;
+				const u = -innerproduct(l1, ray) / det;
 				if(!isField){
 					if(u < 0 || 1 < u) continue;
 				}
 
-				const v = -innerproduct(obj.l2, ray) / det;
+				const v = -innerproduct(l2, ray) / det;
 				if(!isField){
 					if(v < 0 || 1 < v) continue;
 					if(isTri && 1 < (u + v)) continue;
