@@ -6,8 +6,13 @@ const can_h = can.height;// = 480;
 
 const FOV_W = 1.4;
 const FOV_H = 0.8;
+let camera;
+let block = new Array();
 
-class coords{
+let pixels;
+let img_w;
+
+class Coord3{
 	constructor(){
 		this.x = new Float32Array();
 		this.y = new Float32Array();
@@ -80,21 +85,21 @@ class Polygon{
 
 		this.col = col;
 
-		this.line1 = vector3.subVector(Coords.getVector(p2), Coords.getCoord(p1));
-		this.line2 = vector3.subVector(Coords.getVector(p0), Coords.getCoord(p1));
+		this.line1 = vector3.subVector(coords.getVector(p2), coords.getCoord(p1));
+		this.line2 = vector3.subVector(coords.getVector(p0), coords.getCoord(p1));
 
 		this.normal = crossproduct(this.line1, this.line2);
 	}
 
 	update(){
-		this.line1 = vector3.subVector(Coords.getVector(this.p[2]), Coords.getCoord(this.p[1]));
-		this.line2 = vector3.subVector(Coords.getVector(this.p[0]), Coords.getCoord(this.p[1]));
+		this.line1 = vector3.subVector(coords.getVector(this.p[2]), coords.getCoord(this.p[1]));
+		this.line2 = vector3.subVector(coords.getVector(this.p[0]), coords.getCoord(this.p[1]));
 
 		this.normal = crossproduct(this.line1, this.line2);
 	}
 
 	getBase(){
-		return Coords.getCoord(this.p[1]);
+		return coords.getCoord(this.p[1]);
 	}
 
 	static templateTri(p0, p1, p2, col){
@@ -106,7 +111,7 @@ class Polygon{
 	}
 }
 
-const Coords = new coords();
+const coords = new Coord3();
 const Polygons = {
 	polys : new Array(),
 
@@ -237,19 +242,19 @@ class vector3 {
 
 class blocks {
 	constructor(){
-		this.offset = Coords.addCoord(0, 0, 0);
+		this.offset = coords.addCoord(0, 0, 0);
 		this.coords = new Array();
 		this.polys = new Array();
 	}
 	move(x, y, z){
-		Coords.x[this.offset] += x;
-		Coords.y[this.offset] += y;
-		Coords.z[this.offset] += z;
+		coords.x[this.offset] += x;
+		coords.y[this.offset] += y;
+		coords.z[this.offset] += z;
 	}
 	set(x, y, z){
-		Coords.x[this.offset] = x;
-		Coords.y[this.offset] = y;
-		Coords.z[this.offset] = z;
+		coords.x[this.offset] = x;
+		coords.y[this.offset] = y;
+		coords.z[this.offset] = z;
 	}
 	addCoord(coord){
 		this.coords.push(coord);
@@ -263,11 +268,11 @@ class blocks {
 	rotateX(theta){
 		const vec = new vector3(0, 0, 0);
 		for(const c of this.coords){
-			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.moveto(coords.x[c], coords.y[c], coords.z[c]);
 			vec.rotateX(theta);
-			Coords.x[c] = vec.x;
-			Coords.y[c] = vec.y;
-			Coords.z[c] = vec.z;
+			coords.x[c] = vec.x;
+			coords.y[c] = vec.y;
+			coords.z[c] = vec.z;
 		}
 		for(const poly of this.polys){
 			Polygons.update(poly);
@@ -276,11 +281,11 @@ class blocks {
 	rotateY(theta){
 		const vec = new vector3(0, 0, 0);
 		for(const c of this.coords){
-			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.moveto(coords.x[c], coords.y[c], coords.z[c]);
 			vec.rotateY(theta);
-			Coords.x[c] = vec.x;
-			Coords.y[c] = vec.y;
-			Coords.z[c] = vec.z;
+			coords.x[c] = vec.x;
+			coords.y[c] = vec.y;
+			coords.z[c] = vec.z;
 		}
 		for(const poly of this.polys){
 			Polygons.update(poly);
@@ -289,11 +294,11 @@ class blocks {
 	rotateZ(theta){
 		const vec = new vector3(0, 0, 0);
 		for(const c of this.coords){
-			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.moveto(coords.x[c], coords.y[c], coords.z[c]);
 			vec.rotateZ(theta);
-			Coords.x[c] = vec.x;
-			Coords.y[c] = vec.y;
-			Coords.z[c] = vec.z;
+			coords.x[c] = vec.x;
+			coords.y[c] = vec.y;
+			coords.z[c] = vec.z;
 		}
 		for(const poly of this.polys){
 			Polygons.update(poly);		}
@@ -301,11 +306,11 @@ class blocks {
 	rotateVec(n, theta){
 		const vec = new vector3(0, 0, 0);
 		for(const c of this.coords){
-			vec.moveto(Coords.x[c], Coords.y[c], Coords.z[c]);
+			vec.moveto(coords.x[c], coords.y[c], coords.z[c]);
 			vec.rotateX(n, theta);
-			Coords.x[c] = vec.x;
-			Coords.y[c] = vec.y;
-			Coords.z[c] = vec.z;
+			coords.x[c] = vec.x;
+			coords.y[c] = vec.y;
+			coords.z[c] = vec.z;
 		}
 		for(const poly of this.polys){
 			Polygons.update(poly);
@@ -353,22 +358,165 @@ function getRandomInt(min, max){
 	return Math.floor(Math.random() * (max - min)) + min;
 }
 
-let player;
-class Camera{
-	constructor(pos, ray, right){
-		this.pos = pos;
-		this.ray = ray;
-		this.right = right;
+class Camera {
+	#deg;
+	#aspect;
+	#near;
+	#far;
+	//#x;
+	//#y;
+	//#Z;
+	#p;
+	/*#rayDef;
+	#topDef;
+	#rightDef;*/
+	#screen;
+	constructor(deg, aspect, near, far){
+		this.#deg = deg;
+		this.#aspect = aspect;
+		this.#near = near;
+		this.#far = far;
+
+		if(this.#deg == undefined) {
+			this.#deg = 45;
+		}
+		if(this.#aspect == undefined) {
+			this.#aspect = 480 / 360;
+		}
+		if(this.#near == undefined) {
+			this.#near = 1;
+		}
+		if(this.#far == undefined) {
+			this.#far = Infinity;
+		}
+
+		//this.#p = new Int32Array(4 * 3); // pos, ray, right, top : x, y, z
+		this.#p = new Int32Array([0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0]);
+		this.#screen = new Int32Array(3 * 3); //leftTop, rightTop, leftUnder : x, y, z
+
+		/*this.rayDefault = {
+			x: 0,
+			y: 0,
+			z: 1;
+		};
+		this.rightDefault = {
+			x: 1,
+			y: 0,
+			z: 0;
+		};
+
+		this.topDefault = {
+			x: 0,
+			y: 1,
+			z: 0;
+		};*/
+	}
+
+	updateScreen(){
+		const rad = 2 * Math.PI * (deg / 2) / 360;
+		const top = {
+			x: this.#p[0] + this.#p[3] * Math.tan(rad),
+			y: this.#p[1] + this.#p[4] * Math.tan(rad),
+			z: this.#p[2] + this.#p[5] * Math.tan(rad)
+		};
+
+		const under = {
+			x: this.#p[0] - this.#p[3] * Math.tan(rad),
+			y: this.#p[1] - this.#p[4] * Math.tan(rad),
+			z: this.#p[2] - this.#p[5] * Math.tan(rad)
+		};
+
+		this.#screen[0] = top.x - this.#p[6] * Math.tan(rad * aspect);
+		this.#screen[1] = top.y - this.#p[7] * Math.tan(rad * aspect);
+		this.#screen[2] = top.z - this.#p[8] * Math.tan(rad * aspect);
+
+		this.#screen[3] = top.x - this.#p[6] * Math.tan(rad * aspect);
+		this.#screen[4] = top.y - this.#p[7] * Math.tan(rad * aspect);
+		this.#screen[5] = top.z - this.#p[8] * Math.tan(rad * aspect);
+
+		this.#screen[6] = top.x + this.#p[6] * Math.tan(rad * aspect);
+		this.#screen[7] = top.y + this.#p[7] * Math.tan(rad * aspect);
+		this.#screen[8] = top.z + this.#p[8] * Math.tan(rad * aspect);
+	}
+
+	getMaxDist(){
+		return this.#far / this.#near;
+	}
+
+
+	/*lookAt(x, y, z){
+		const theta = Math.atan(y / x);
+		const gamma = Math.atan(z / x);
+
+		let size = Math.sqrt(x*x + y*y + z*z);
+
+		this.#p[1*3 + 0] = x / size;
+		this.#p[1*3 + 1] = y / size;
+		this.#p[1*3 + 2] = z / size;
+
+		x ;
+		y;
+		z;
+
+		this.#p[2*3 + 0] = x;
+		this.#p[2*3 + 1] = y;
+		this.#p[2*3 + 2] = z;
+
+		this.#p[3*3 + 0] = x;
+		this.#p[3*3 + 1] = y;
+		this.#p[3*3 + 2] = z;
+	}*/
+
+	set(x, y, z){
+		this.#p[0*3 + 0] = x;
+		this.#p[0*3 + 1] = y;
+		this.#p[0*3 + 2] = z;
+	}
+	move(x, y, z){
+		this.#p[0*3 + 0] += x;
+		this.#p[0*3 + 1] += y;
+		this.#p[0*3 + 2] += z;
+	}
+
+	getCoord(type){
+		return {
+			x: this.#p[type*3 + 0],
+			y: this.#p[type*3 + 1],
+			z: this.#p[type*3 + 2]
+		}
+	}
+	getPos(){
+		return this.getCoord(0);
+	}
+	getRay(){
+		return this.getCoord(1);
+	}
+	getRight(){
+		return this.getCoord(2);
 	}
 	getTop(){
-		return crossproduct(this.ray, this.right).unitization();
+		return this.getCoord(3);
+	}
+
+	getScreen(n){
+		return {
+			x: this.#screen[n*3 + 0],
+			y: this.#screen[n*3 + 1],
+			z: this.#screen[n*3 + 2]
+		}
+	}
+
+	rotateRay(theta){
+
+	}
+	rotateTop(theta){
+
+	}
+	rotateRight(theta){
+
 	}
 }
 
-let block = new Array();
-
-let pixels;
-let img_w;
 
 function setDrawData(data){
 	const light = new vector3(3, 10, -5);
@@ -409,9 +557,9 @@ function setDrawData(data){
 		let normal = datum.poly.normal.clone().unitization();
 
 		ray.moveto(
-			datum.pos.x - player.pos.x,
-			datum.pos.y - player.pos.y,
-			datum.pos.z - player.pos.z
+			datum.pos.x - camera.getPos().x,
+			datum.pos.y - camera.getPos().y,
+			datum.pos.z - camera.getPos().z
 		);
 
 		point.moveto(
@@ -481,9 +629,9 @@ function searchforward(origin, ray, dist, expect){
 
 			const base = poly.getBase();
 			d.moveto(
-				origin.x - Coords.x[b.offset] - base.x,
-				origin.y - Coords.y[b.offset] - base.y,
-				origin.z - Coords.z[b.offset] - base.z
+				origin.x - coords.x[b.offset] - base.x,
+				origin.y - coords.y[b.offset] - base.y,
+				origin.z - coords.z[b.offset] - base.z
 			);
 
 			const t = innerproduct(poly.normal, d) / det;
@@ -500,13 +648,13 @@ function searchforward(origin, ray, dist, expect){
 }
 
 function rayTracing_field(imagebuff){
-	const pX = player.pos.x;
-	const pY = player.pos.y;
-	const pZ = player.pos.z;
+	const pX = camera.getPos().x;
+	const pY = camera.getPos().y;
+	const pZ = camera.getPos().z;
 
-	const pRay = player.ray;
-	const pRight = player.right;
-	const top = player.getTop();
+	const pRay = camera.getRay();
+	const pRight = camera.getRight();
+	const top = camera.getTop();
 
 	const fields = new Array();
 
@@ -519,9 +667,9 @@ function rayTracing_field(imagebuff){
 			if(poly.type != 'field') continue;
 			const base = poly.getBase();
 			d.moveto(
-				pX - Coords.x[b.offset] - base.x,
-				pY - Coords.y[b.offset] - base.y,
-				pZ - Coords.z[b.offset] - base.z
+				pX - coords.x[b.offset] - base.x,
+				pY - coords.y[b.offset] - base.y,
+				pZ - coords.z[b.offset] - base.z
 			);
 			fields.push({poly : poly,
 							dist : innerproduct(poly.normal, d),
@@ -592,13 +740,13 @@ function draw(){
 
 	const resolution = 200;
 
-	const pX = player.pos.x;
-	const pY = player.pos.y;
-	const pZ = player.pos.z;
+	const pX = camera.getPos().x;
+	const pY = camera.getPos().y;
+	const pZ = camera.getPos().z;
 
-	const pRay = player.ray;
-	const pRight = player.right;
-	const top = player.getTop();
+	const pRay = camera.getRay();
+	const pRight = camera.getRight();
+	const top = camera.getTop();
 
 	let ray = new vector3(0, 0, 0);
 	let d = new vector3(0, 0, 0);
@@ -615,9 +763,9 @@ function draw(){
 			if(poly.type === 'field') continue;
 			const base = poly.getBase();
 			d.moveto(
-				pX - Coords.x[b.offset] - base.x,
-				pY - Coords.y[b.offset] - base.y,
-				pZ - Coords.z[b.offset] - base.z
+				pX - coords.x[b.offset] - base.x,
+				pY - coords.y[b.offset] - base.y,
+				pZ - coords.z[b.offset] - base.z
 			);
 
 			//if(detMat_fast(poly.line1.x , poly.line1.y, poly.line1.z,
@@ -651,9 +799,9 @@ function draw(){
 					};
 
 					ray.moveto(
-						Coords.x[b.offset] + base.x + _u * poly.line1.x + _v * poly.line2.x - pX,
-						Coords.y[b.offset] + base.y + _u * poly.line1.y + _v * poly.line2.y - pY,
-						Coords.z[b.offset] + base.z + _u * poly.line1.z + _v * poly.line2.z - pZ
+						coords.x[b.offset] + base.x + _u * poly.line1.x + _v * poly.line2.x - pX,
+						coords.y[b.offset] + base.y + _u * poly.line1.y + _v * poly.line2.y - pY,
+						coords.z[b.offset] + base.z + _u * poly.line1.z + _v * poly.line2.z - pZ
 					).unitization();
 
 					const correction = innerproduct(ray, pRay);
@@ -696,9 +844,9 @@ function draw(){
 						//	dst_l1: _u,
 						//	dst_l2: _v,
 						//	pos: new vector3(
-						//			player.pos.x + t * ray.x,
-						//			player.pos.y + t * ray.y,
-						//			player.pos.z + t * ray.z
+						//			camera.getPos().x + t * ray.x,
+						//			camera.getPos().y + t * ray.y,
+						//			camera.getPos().z + t * ray.z
 						//		),
 						//	tri: tri
 						//};
@@ -716,53 +864,63 @@ function draw(){
 }
 
 function keyEvent(e){
-	let top = player.getTop();
+	let ray = camera.getRay();
+	let top = camera.getTop();
+	let right = camera.getRight();
 	switch(e.key){
 		case 'w':
-			player.pos.x += 0.5 * player.ray.x;
-			player.pos.y += 0.5 * player.ray.y;
-			player.pos.z += 0.5 * player.ray.z;
+			camera.move(
+				0.5 * ray.x,
+				0.5 * ray.y,
+				0.5 * ray.z
+			);
 			break;
 		case 's':
-			player.pos.x -= 0.5 * player.ray.x;
-			player.pos.y -= 0.5 * player.ray.y;
-			player.pos.z -= 0.5 * player.ray.z;
+			camera.move(
+				-0.5 * ray.x,
+				-0.5 * ray.y,
+				-0.5 * ray.z
+			);
 			break;
 		case 'd':
-			player.pos.x += 0.5 * player.right.x;
-			player.pos.y += 0.5 * player.right.y;
-			player.pos.z += 0.5 * player.right.z;
+			camera.move(
+				0.5 * right.x,
+				0.5 * right.y,
+				0.5 * right.z
+			);
 			break;
 		case 'a':
-			player.pos.x -= 0.5 * player.right.x;
-			player.pos.y -= 0.5 * player.right.y;
-			player.pos.z -= 0.5 * player.right.z;
+			camera.move(
+				-0.5 * right.x,
+				-0.5 * right.y,
+				-0.5 * right.z
+			);
 			break;
 		case 'q':
-			player.pos.x += 0.5 * top.x;
-			player.pos.y += 0.5 * top.y;
-			player.pos.z += 0.5 * top.z;
+			camera.move(
+				0.5 * top.x,
+				0.5 * top.y,
+				0.5 * top.z
+			);
 			break;
 		case 'e':
-			player.pos.x -= 0.5 * top.x;
-			player.pos.y -= 0.5 * top.y;
-			player.pos.z -= 0.5 * top.z;
+			camera.move(
+				-0.5 * top.x,
+				-0.5 * top.y,
+				-0.5 * top.z
+			);
 			break;
 		case 'r':
-			player.ray.rotateVec(player.right, -0.1);
-			top.rotateVec(player.right, -0.1);
+			camera.rotateRight(-0.1);
 			break;
 		case 'f':
-			player.ray.rotateVec(player.right, 0.1);
-			top.rotateVec(player.right, 0.1);
+			camera.rotateRight(0.1);
 			break;
 		case 'c':
-			player.ray.rotateVec(top, 0.1);
-			player.right.rotateVec(top, 0.1);
+			camera.rotateTop(0.1);
 			break;
 		case 'z':
-			player.ray.rotateVec(top, -0.1);
-			player.right.rotateVec(top, -0.1);
+			camera.rotateTop(-0.1);
 			break;
 
 		case 'i':
@@ -800,8 +958,6 @@ function keyEvent(e){
 	draw();
 }
 
-document.addEventListener('keydown', function(e){keyEvent(e);});
-
 function randomRotateObject(){
 	let dx = Math.random() * 0.05;
 	let dy = Math.random() * 0.05;
@@ -819,25 +975,25 @@ function randomRotateObject(){
 
 	LineGraph.addData(end - start);
 	LineGraph.draw();
-
 }
 
 var intarvalID = null;
 function loop(){
-	
-	player.ray.moveto(0, 0, 1);
-	player.right.moveto(1, 0, 0);
-	player.pos.moveto(0, 0, -10);
-	let top = player.getTop();
-	player.pos.x += 3 * top.x + 3 * player.right.x;
-	player.pos.y += 3 * top.y + 3 * player.right.y;
-	player.pos.z += 3 * top.z + 3 * player.right.z;
+	console.log(camera);
+	camera.set(0, 0, -10);
+	console.log(camera);
 
-	player.ray.rotateVec(top, -0.2);
-	player.right.rotateVec(top, -0.2);
+	let top = camera.getTop();
+	let right = camera.getRight();
+	camera.move(
+		3 * top.x + 3 * right.x,
+		3 * top.y + 3 * right.y,
+		3 * top.z + 3 * right.z
+	);
 
-	player.ray.rotateVec(player.right, 0.3);
-	top.rotateVec(player.right, 0.3);
+	camera.rotateTop(-0.2);
+
+	camera.rotateRight(0.3);
 
 	draw();
 
@@ -850,10 +1006,6 @@ function stop(){
 	intarvalID = null;
 }
 
-initCanvas();
-draw();
-
-loop();
 
 function testExtendY(d){
 	let b = block[0];
@@ -867,20 +1019,11 @@ function testExtendY(d){
 	draw();
 }
 
+function initAll(){
+	camera = new Camera(45, can_w / can_h, 1, Infinity);
+	document.addEventListener('keydown', function(e){keyEvent(e);});
 
-
-function initCanvas(){
-	ctx.clearRect(0, 0, can_w, can_h);
-
-	ctx.strokeStyle = 'black';
-	ctx.fillRect(0, 0, can_w, can_h);
-
-
-	player = new Camera(
-		new vector3(0, 0, -10),
-		new vector3(0, 0, 1),
-		new vector3(1, 0, 0)
-	);
+	initCanvas();
 
 	initObject();
 
@@ -889,17 +1032,24 @@ function initCanvas(){
 	initObject(0, 0, 4);
 
 	initObject(0, 0, 8);*/
-
+	draw();
 }
 
-function initObject(x, y, z){
+function initCanvas(){
+	ctx.clearRect(0, 0, can_w, can_h);
+
+	ctx.strokeStyle = 'black';
+	ctx.fillRect(0, 0, can_w, can_h);
+}
+
+function initObject(){
 	const _block = new blocks();
 
 	_block.set(0, -3, 0);
 
-	const pnt1 = Coords.addCoord( 0, 0, 0);
-	const pnt2 = Coords.addCoord( 1, 0, 0);
-	const pnt3 = Coords.addCoord( 1, 0, 1);
+	const pnt1 = coords.addCoord( 0, 0, 0);
+	const pnt2 = coords.addCoord( 1, 0, 0);
+	const pnt3 = coords.addCoord( 1, 0, 1);
 
 	const poly1 = Polygons.addPolygon(new Polygon('field', 'normal', 'both', pnt1, pnt2, pnt3, 0xffffffff));
 
@@ -924,14 +1074,14 @@ function createCubeObject(x, y, z){
 
 	_block.set(x, y, z);
 
-	const pnt1 = Coords.addCoord(-1, -1, -1);
-	const pnt2 = Coords.addCoord( 1, -1, -1);
-	const pnt3 = Coords.addCoord( 1,  1, -1);
-	const pnt4 = Coords.addCoord(-1,  1, -1);
-	const pnt5 = Coords.addCoord(-1, -1,  1);
-	const pnt6 = Coords.addCoord( 1, -1,  1);
-	const pnt7 = Coords.addCoord( 1,  1,  1);
-	const pnt8 = Coords.addCoord(-1,  1,  1);
+	const pnt1 = coords.addCoord(-1, -1, -1);
+	const pnt2 = coords.addCoord( 1, -1, -1);
+	const pnt3 = coords.addCoord( 1,  1, -1);
+	const pnt4 = coords.addCoord(-1,  1, -1);
+	const pnt5 = coords.addCoord(-1, -1,  1);
+	const pnt6 = coords.addCoord( 1, -1,  1);
+	const pnt7 = coords.addCoord( 1,  1,  1);
+	const pnt8 = coords.addCoord(-1,  1,  1);
 
 	_block.addCoord(pnt1)
 			.addCoord(pnt2)
@@ -970,3 +1120,11 @@ function createCubeObject(x, y, z){
 
 	block.push(_block);
 }
+
+
+initAll();
+
+window.addEventListener("load", function(){
+	console.log("loaded");
+	loop();
+});

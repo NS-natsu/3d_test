@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8" />
-    <title>Gamedev Canvas Workshop</title>
-    <style>
-    	* { padding: 0; margin: 0; }
-    	canvas {display: block; margin: 0; }
+	<meta charset="utf-8" />
+	<style>
+		* { padding: 0; margin: 0; }
+		canvas {display: block; margin: 0; }
 		div#objectOperate {
 			position: absolute;
 			left: 128px;
@@ -93,10 +92,19 @@
 			left: 75%;
 			top: 66%;
 		}
+		div#debug {
+			position: absolute;
+			margin: 10px 0;
+			width: 128px;
+			height: 60px;
+			left: 256px;
+		}
     </style>
 </head>
 <body>
-	<canvas id="can" width="480" height="360"></canvas>
+	<div>
+		<canvas id="can" width="480" height="360"></canvas>
+	</div>
 	<div>	
 		<div id="playerOperate">
 			<button type="button" id="forward" onclick='keyEvent({key:"w"});'>前進</button>
@@ -118,12 +126,24 @@
 			<button type="button" id="rotU" onclick='keyEvent({key:"i"});'>上向</button>
 			<button type="button" id="rotD" onclick='keyEvent({key:"k"});'>下向</button>
 		</div>
+		<div id="debug">
+			<button type="button" onclick='calc_Right = !calc_Right;'>光</button>
+		</div>
 	</div>
-	<div>
+	<div id="latest" style="position: relative; top: 100px;"></div>
+	<div style="position: relative; top: 100px;">
 		<canvas id="myLineChart"></canvas>
 	</div>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
 	<script src="lineGraphs.js"></script>
+
+	<script src="Coords.js"></script>
+	<script src="Object.js"></script>
+	<script src="RayTrace.js"></script>
+	<script src="Draw.js"></script>
+	<script src="Main.js"></script>
+	<!--
 	<script src="test.js"></script>
+-->
 </body>
 </html>
