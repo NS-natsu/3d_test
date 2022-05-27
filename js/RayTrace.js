@@ -145,7 +145,9 @@ function rays_casting(buffer, objs, width, height){
 	stepH_X -= can_w * stepW_X;
 	stepH_Y -= can_w * stepW_Y;
 	stepH_Z -= can_w * stepW_Z;
-	for(let i = objs.length - 1; 0 <= i; i--){
+	let x, y, len;
+	buffer.LookAt(buffer.size() - 1);
+	for(let i = 0, len = objs.length; i < len; i = (i+1)|0){
 		//const obj = objs[i];
 		const dist = objs[i].dist;
 		const l1 = objs[i].l1;
@@ -168,15 +170,12 @@ function rays_casting(buffer, objs, width, height){
 			y: startY,
 			z: startZ
 		};
-
-		let pos = -1;
-		buffer.LookAt(buffer.size() - 1);
-		for(let y = can_h; 0 < y; y--){
+		//buffer.LookAt(buffer.size() - 1);
+		for(y = 0; y < can_h; y=(y+1)|0){
 			ray.x += stepH_X;
 			ray.y += stepH_Y;
 			ray.z += stepH_Z;
-			for(let x = can_w; 0 < x; x--){
-				pos++;
+			for(x = 0; x < can_w; x=(x+1)|0){
 				ray.x += stepW_X;
 				ray.y += stepW_Y;
 				ray.z += stepW_Z;
@@ -184,7 +183,8 @@ function rays_casting(buffer, objs, width, height){
 				buffer.next();
 
 				let det = innerproduct(normal, ray);
-				if(det === 0){
+
+				if(det == 0){
 					continue;
 				}
 				if(!isBoth && det < 0){

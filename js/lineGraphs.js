@@ -50,12 +50,14 @@ const LineGraph = {
 					{
 						label : '実行速度',
 						data : this.list.slice(),
+						lineTension: 0,
 						borderColor : "rgba(255, 0, 0, 1)",
 						backgroundColor : "rgba(0, 0, 0, 0)"
 					}
 				]
 			},
 			options : {
+				animation: false,
 				title : {
 					display : true,
 					text : '平均:' + this.ave
@@ -63,9 +65,9 @@ const LineGraph = {
 				scales : {
 					yAxes : [{
 						ticks : {
-							suggestedMax : max,
-							suggestedMin : this.min,
-							stepSize : (max - this.min) / 10,
+							suggestedMax : max | 0,
+							suggestedMin : this.min | 0,
+							stepSize : ((max - this.min) / 10) | 0,
 							callback : function(value, index, values){
 								return value;
 							}

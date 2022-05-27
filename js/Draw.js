@@ -116,6 +116,14 @@ class Buffer {
 		this.#max = size - 1;
 		this.#data = new Float32Array(size * 8);
 		this.#itr = 0;
+
+		//this.#data.fill(-1);
+	}
+	setDist(dist){
+		let off = 0, len = this.#max << 3;
+		for(;off <= len; off = (off+8)|0){
+			this.#data[off] = dist;
+		}
 	}
 	LookAt(n){
 		if(n < 0 || this.#max < n){
@@ -146,8 +154,8 @@ class Buffer {
 
 	formatData(d, l1, l2, x, y, z, pnum){
 		let offset = -8;
-		for(let cnt = this.#max; 0 <= cnt; cnt--){
-			offset += 8;
+		for(let cnt = this.#max; 0 <= cnt; cnt=(cnt-1)|0){
+			offset = (offset+8)|0;
 			this.#data[offset + 0] = d;
 			this.#data[offset + 1] = l1;
 			this.#data[offset + 2] = l2;
@@ -275,35 +283,31 @@ function draw(){
 	pixels = imageData.data;
 
 	const pPos = camera.getPos();
-
+/*
 	const pRay = camera.getRay();
 	const pRight = camera.getRight();
 	const top = camera.getTop();
-
-	let ray = new vector3(0, 0, 0);
-	let d = new vector3(0, 0, 0);
-
 	const argRayW = Math.tan(FOV_W / 2);
 	const argRayH = Math.tan(FOV_H / 2);
 
 	const correctW = can_w / FOV_W;
 	const correctH = can_h / FOV_H;
 
+*/
 	const fields = new Array();
 
-	for(let i = block.length - 1; 0 <= i; i--){
+	for(let i = block.length - 1; 0 <= i; i=(i-1)|0){
 		const b = block[i];
 		const offset = b.offset;
-		for(let j = b.polys.length - 1; 0 <= j; j--){
-			const polyNum = b.polys[j];
-			const poly = Polygons.polys[polyNum];
+		for(let j = b.polys.length - 1; 0 <= j; j=(j-1)|0){
+			const poly = Polygons.polys[b.polys[j]];
 			const base = poly.getBase();
-			d.moveto(
-				pPos.x - Coords.x[offset] - base.x,
-				pPos.y - Coords.y[offset] - base.y,
-				pPos.z - Coords.z[offset] - base.z
-			);
-			fields.push({polyNum : polyNum,
+			const d = {
+				x: pPos.x - Coords.x[offset] - base.x,
+				y: pPos.y - Coords.y[offset] - base.y,
+				z: pPos.z - Coords.z[offset] - base.z
+			};
+			fields.push({polyNum : b.polys[j],
 							dist : innerproduct(poly.normal, d),
 							l1 : crossproduct(d, poly.line2),
 							l2 : crossproduct(poly.line1, d)});
@@ -312,9 +316,10 @@ function draw(){
 
 	//const fields = new CollisionDetection(block, pPos);
 
+
 	const dist = camera.getMaxDist();
 	const imageDataBuff = new Buffer(can_w*can_h);
-	imageDataBuff.formatData(dist, 0, 0, 0, 0, 0, -1);
+	imageDataBuff.formatData(dist);
 
 	rays_casting(imageDataBuff, fields);
 
@@ -324,105 +329,4 @@ function draw(){
 
 	ctx.putImageData(imageData, 0, 0);
 	return;
-	for(const b of block){
-		for(const polyNum of b.polys){
-			const poly = Polygons.polys[polyNum];
-			if(poly.type === 'field') continue;
-			const base = poly.getBase();
-			d.moveto(
-				pPos.x - Coords.x[b.offset] - base.x,
-				pPos.y - Coords.y[b.offset] - base.y,
-				pPos.z - Coords.z[b.offset] - base.z
-			);
-
-			//if(detMat_fast(poly.line1.x , poly.line1.y, poly.line1.z,
-			//	poly.line2.x, poly.line2.y, poly.line2.z,
-			//	d.x, d.y, d.z) <= 0){
-			const args = innerproduct(d, poly.normal);
-
-			if(args === 0){
-				continue;
-			}
-
-			if(poly.maskSide != 'both' && args < 0){
-				continue;
-			}
-
-			for(let u = resolution; 0 <= u; u--){
-				let v = resolution;
-				if(poly.type === 'tri'){
-					v -= u;
-				}
-				for(; 0 <= v; v--){
-					const _u = u / resolution;
-					const _v = v / resolution;
-
-					let intersects = {
-						dist: 0,
-						dst_l1: _u,
-						dst_l2: _v,
-						pos: null,
-						poly: null
-					};
-
-					ray.moveto(
-						Coords.x[b.offset] + base.x + _u * poly.line1.x + _v * poly.line2.x - pX,
-						Coords.y[b.offset] + base.y + _u * poly.line1.y + _v * poly.line2.y - pY,
-						Coords.z[b.offset] + base.z + _u * poly.line1.z + _v * poly.line2.z - pZ
-					).unitization();
-
-					const correction = innerproduct(ray, pRay);
-					if(correction < 0) continue;
-
-					const argH = innerproduct(ray, top) / correction;
-					if(((argH < 0) ? -argH : argH) > argRayH) continue;
-
-					const argW = innerproduct(ray, pRight) / correction;
-					if(((argW < 0) ? -argW : argW) > argRayW) continue;
-
-					/*const det = detMat_fast(tri.line1.x , tri.line1.y, tri.line1.z,
-									tri.line2.x, tri.line2.y, tri.line2.z,
-									-ray.x, -ray.y, -ray.z);*/
-					const det = -innerproduct(ray, poly.normal);
-
-					/*const t = detMat_fast(
-								tri.line1.x , tri.line1.y, tri.line1.z,
-								tri.line2.x, tri.line2.y, tri.line2.z,
-								d.x, d.y, d.z) / det;*/
-
-					const t = args / det;
-					if(t <= 0) continue;
-
-					const diffW = (Math.atan(argW) + (FOV_W / 2)) * correctW;// + 0.5; いらなかった
-					const diffH = ((FOV_H / 2) - Math.atan(argH)) * correctH;// + 0.5;
-
-					const pnt = (diffH >> 0) * can_w + (diffW >> 0); // num | 0 == floor(num)
-					if(imageDataBuff[pnt] === undefined || t <= imageDataBuff[pnt].dist){
-						intersects.dist = t;
-						intersects.poly = poly;
-						intersects.pos = new vector3(
-							pX + t * ray.x,
-							pY + t * ray.y,
-							pZ + t * ray.z
-						);
-						imageDataBuff[pnt] = intersects;
-						//imageDataBuff[pnt] = {
-						//	dist: t,
-						//	dst_l1: _u,
-						//	dst_l2: _v,
-						//	pos: new vector3(
-						//			camera.pos.x + t * ray.x,
-						//			camera.pos.y + t * ray.y,
-						//			camera.pos.z + t * ray.z
-						//		),
-						//	tri: tri
-						//};
-					}
-				}
-			}
-		}
-	}
-
-	rayTracing_field(imageDataBuff);
-
 }

@@ -132,30 +132,34 @@ function keyEvent(e){
 			break;
 		default: break;
 	}
-	draw(can_w, can_h);
+	//draw(can_w, can_h);
 }
 
 function randomRotateObject(){
-	let dx = Math.random() * 0.05;
+	/*let dx = Math.random() * 0.05;
 	let dy = Math.random() * 0.05;
 	let dz = Math.random() * 0.05;
 
 	//for(b of block){
 	let b = block[1];
-	b.rotateX(-0.03);
-	b.rotateY(-0.02);
+	//b.rotateX(-0.03);
+	//b.rotateY(-0.02);
 	//}
-
+*/
 	const start = performance.now();
+	console.time('draw');
 	draw(can_w, can_h);
+	console.timeEnd('draw');
 	const end = performance.now();
 
 	LineGraph.addData(end - start);
 	LineGraph.draw();
+
+	document.getElementById('latest').innerHTML = "" + (end - start);
 }
 
 function loop(){
-	camera.set(0, 3, -10);
+	/**/camera.set(0, 3, -10);
 	let top = camera.getTop();
 	let right = camera.getRight();
 	camera.move(
@@ -168,7 +172,7 @@ function loop(){
 	camera.rotateRight(0.3);
 
 	if(intarvalID != null) stop();
-	intarvalID = setInterval(randomRotateObject, 16);
+	intarvalID = setInterval(randomRotateObject, 100);
 }
 
 function stop(){
