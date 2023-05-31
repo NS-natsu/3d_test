@@ -229,11 +229,11 @@ function randomRotateObject(){
 	let dy = Math.random() * 0.05;
 	let dz = Math.random() * 0.05;
 
-	for(b of block){
+	//for(b of block){
 	let b = block[1];
 	b.rotateX(-0.03);
 	b.rotateY(-0.02);
-	}
+	//}
 
 	const start = performance.now();
 	draw();
